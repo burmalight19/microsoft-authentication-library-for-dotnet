@@ -54,6 +54,17 @@ namespace Microsoft.Identity.Client.Utils
             return unixTimestamp;
         }
 
+        public static long GetDurationFromNowInSeconds(string unixTimestampInFuture)
+        {
+            if (string.IsNullOrEmpty(unixTimestampInFuture))
+            {
+                return 0;
+            }
+
+            long expiresOnUnixTimestamp = long.Parse(unixTimestampInFuture, CultureInfo.InvariantCulture);
+            return expiresOnUnixTimestamp - CurrDateTimeInUnixTimestamp();
+        }
+
         public static string CreateString(byte[] bytes)
         {
             return Encoding.UTF8.GetString(bytes, 0, bytes.Length);
