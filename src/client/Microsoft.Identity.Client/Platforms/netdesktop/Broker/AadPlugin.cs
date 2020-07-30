@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client.ApiConfig.Parameters;
 using Microsoft.Identity.Client.Core;
-using Microsoft.Identity.Client.Internal.Broker;
 using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
 using Microsoft.Identity.Client.UI;
@@ -16,12 +15,12 @@ using Windows.Security.Credentials;
 
 namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 {
-    internal class WamAADPlugin : IWamPlugin
+    internal class AadPlugin : IWamPlugin
     {
-        private ICoreLogger _logger;
-        private CoreUIParent _uiParent;
+        private readonly ICoreLogger _logger;
+        private readonly CoreUIParent _uiParent;
 
-        public WamAADPlugin(ICoreLogger logger, CoreUIParent uiParent)
+        public AadPlugin(ICoreLogger logger, CoreUIParent uiParent)
         {
             _logger = logger;
             _uiParent = uiParent;
@@ -32,15 +31,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             throw new NotImplementedException();
         }
 
-        public async Task<MsalTokenResponse> AcquireTokenSilentAsync(
-            AuthenticationRequestParameters authenticationRequestParameters,
-            AcquireTokenSilentParameters acquireTokenSilentParameters)
-        {
-            var provider = await GetAccountProviderAsync(authenticationRequestParameters.AuthorityInfo.CanonicalAuthority).ConfigureAwait(false);
-
-            return null;
-
-        }
 
         public async Task<IEnumerable<IAccount>> GetAccountsAsync(string clientID)
         {
@@ -122,12 +112,12 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         }
 
         public async Task<WebAccount> FindWamAccountForMsalAccountAsync(
-            WebAccountProvider webAccounProvider,
+            WebAccountProvider provider,
             IAccount account,
             string loginHint,
             string clientId)
         {
-            WamProxy wamProxy = new WamProxy(webAccounProvider, _logger);
+            WamProxy wamProxy = new WamProxy(provider, _logger);
 
             var webAccounts = await wamProxy.FindAllWebAccountsAsync(clientId).ConfigureAwait(false);
 
@@ -153,23 +143,23 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             WebAccountProvider provider,
             bool isInteractive,
             bool isAccountInWam,
-            AuthenticationRequestParameters requestParameters)
+            AuthenticationRequestParameters authenticationRequestParameters)
         {
-            
-            bool setLoginHint = isInteractive && !isAccountInWam && !string.IsNullOrEmpty(requestParameters.LoginHint);
+
+            bool setLoginHint = isInteractive && !isAccountInWam && !string.IsNullOrEmpty(authenticationRequestParameters.LoginHint);
             var wamPrompt = setLoginHint ?
                 WebTokenRequestPromptType.ForceAuthentication :
                 WebTokenRequestPromptType.Default;
 
             WebTokenRequest request = new WebTokenRequest(
                 provider,
-                GetEffectiveScopes(requestParameters.Scope),
-                requestParameters.ClientId,
+                GetEffectiveScopes(authenticationRequestParameters.Scope),
+                authenticationRequestParameters.ClientId,
                 wamPrompt);
 
             if (setLoginHint)
             {
-                request.AppProperties.Add("LoginHint", requestParameters.LoginHint);
+                request.AppProperties.Add("LoginHint", authenticationRequestParameters.LoginHint);
             }
 
             // TODO: bogavril - add support for ROPC ?
@@ -177,16 +167,16 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             request.AppProperties.Add("wam_compat", "2.0");
             if (ApiInformation.IsPropertyPresent("Windows.Security.Authentication.Web.Core.WebTokenRequest", "CorrelationId"))
             {
-                request.CorrelationId = requestParameters.CorrelationId.ToString();
+                request.CorrelationId = authenticationRequestParameters.CorrelationId.ToString();
             }
             else
             {
-                request.AppProperties.Add("correlationId", requestParameters.CorrelationId.ToString());
+                request.AppProperties.Add("correlationId", authenticationRequestParameters.CorrelationId.ToString());
             }
 
-            if (!string.IsNullOrEmpty(requestParameters.ClaimsAndClientCapabilities))
+            if (!string.IsNullOrEmpty(authenticationRequestParameters.ClaimsAndClientCapabilities))
             {
-                request.AppProperties.Add("claims", requestParameters.ClaimsAndClientCapabilities);
+                request.AppProperties.Add("claims", authenticationRequestParameters.ClaimsAndClientCapabilities);
             }
 
             return request;
@@ -203,12 +193,12 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             if (!wamResponse.Properties.TryGetValue("TokenExpiresOn", out string expiresOn))
             {
                 _logger.Warning("Result from WAM does not have expiration. Marking access token as expired.");
-                expiresOn = CoreHelpers.CurrDateTimeInUnixTimestamp().ToString(CultureInfo.InvariantCulture);
+                expiresOn = null;
             }
 
             if (!wamResponse.Properties.TryGetValue("ExtendedLifetimeToken", out string extendedExpiresOn))
             {
-                extendedExpiresOn = CoreHelpers.CurrDateTimeInUnixTimestamp().ToString(CultureInfo.InvariantCulture);
+                extendedExpiresOn = null;
             }
 
             if (!wamResponse.Properties.TryGetValue("Authority", out string authority))
@@ -230,7 +220,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             bool hasIdToken = wamResponse.Properties.TryGetValue("wamcompat_id_token", out string idToken);
             _logger.Info("Result from WAM has id token? " + hasIdToken);
 
-            bool hasClientInfo = wamResponse.Properties.TryGetValue("wamcompat_id_token", out string clientInfo);
+            bool hasClientInfo = wamResponse.Properties.TryGetValue("wamcompat_client_info", out string clientInfo);
             _logger.Info("Result from WAM has client info? " + hasClientInfo);
 
             bool hasScopes = wamResponse.Properties.TryGetValue("wamcompat_scopes", out string scopes);
@@ -244,8 +234,8 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 IdToken = idToken,
                 CorrelationId = correlationId,
                 Scope = scopes,
-                ExpiresIn = CoreHelpers.GetDurationFromNowInSeconds(expiresOn),
-                ExtendedExpiresIn = CoreHelpers.GetDurationFromNowInSeconds(extendedExpiresOn),
+                ExpiresIn = CoreHelpers.GetDurationFromWindowsTimestamp(expiresOn, _logger),
+                ExtendedExpiresIn = CoreHelpers.GetDurationFromWindowsTimestamp(extendedExpiresOn, _logger),
                 ClientInfo = clientInfo,
                 TokenType = "Bearer", // TODO: bogavril - token type?
                 TokenSource = TokenSource.Broker
@@ -253,5 +243,35 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
             return msalTokenResponse;
         }
+
+        public string MapTokenRequestError(WebTokenRequestStatus status, uint errorCode, bool isInteractive)
+        {
+            if (status == WebTokenRequestStatus.UserInteractionRequired)
+            {
+                return MsalError.InteractionRequired;
+            }
+
+            if (status == WebTokenRequestStatus.ProviderError)
+            {
+                if (errorCode == 0xcaa20005)
+                    return "ServerTemporarilyUnavailable"; //TODO bogavril: find existing error codes for these
+
+                var hresultFacility = (((errorCode) >> 16) & 0x1fff);
+                if (hresultFacility == 0xAA3 // FACILITY_ADAL_HTTP in AAD WAM plugin
+                     || hresultFacility == 0xAA7 // FACILITY_ADAL_URLMON in AAD WAM plugin
+                     || hresultFacility == 0xAA8) // FACILITY_ADAL_INTERNET in AAD WAM plugin
+                {
+                    return "NoNetwork";
+                }
+
+                if (hresultFacility == 0xAA1) // FACILITY_ADAL_DEVELOPER in AAD WAM plugin
+                {
+                    return "ApiContractViolation";
+                }
+            }
+
+            return "UnexpectedBrokerError";
+        }
+
     }
 }

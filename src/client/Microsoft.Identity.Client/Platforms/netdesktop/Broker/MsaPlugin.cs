@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client.ApiConfig.Parameters;
-using Microsoft.Identity.Client.Internal.Broker;
 using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
 using Windows.Security.Authentication.Web.Core;
@@ -11,7 +10,7 @@ using Windows.Security.Credentials;
 
 namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 {
-    internal class WamMSAPlugin : IWamPlugin
+    internal class MsaPlugin : IWamPlugin
     {
         public Task<MsalTokenResponse> AcquireTokenSilentAsync(AuthenticationRequestParameters authenticationRequestParameters, AcquireTokenSilentParameters acquireTokenSilentParameters)
         {
@@ -39,6 +38,11 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         }
 
         public string GetHomeAccountIdOrNull(WebAccount webAccount)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string MapTokenRequestError(WebTokenRequestStatus status, uint errorCode, bool isInteractive)
         {
             throw new NotImplementedException();
         }
