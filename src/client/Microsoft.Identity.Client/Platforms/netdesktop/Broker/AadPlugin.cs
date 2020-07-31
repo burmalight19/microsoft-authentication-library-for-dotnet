@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client.ApiConfig.Parameters;
@@ -34,7 +33,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         public async Task<IEnumerable<IAccount>> GetAccountsAsync(string clientID)
         {
-            var webAccounProvider = await GetAccountProviderAsync().ConfigureAwait(false);
+            var webAccounProvider = await WamBroker.GetAccountProviderAsync("organizations").ConfigureAwait(false);
             WamProxy wamProxy = new WamProxy(webAccounProvider, _logger); //TODO: not suitable for unit testing
 
             var webAccounts = await wamProxy.FindAllWebAccountsAsync(clientID).ConfigureAwait(false);
@@ -47,16 +46,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             _logger.Info($"[WAM AAD Provider] GetAccountsAsync converted {webAccounts.Count()} MSAL accounts");
             return msalAccounts;
         }
-
-
-        public async Task<WebAccountProvider> GetAccountProviderAsync(string tenant = "organizations")
-        {
-            WebAccountProvider provider = await WebAuthenticationCoreManager.FindAccountProviderAsync(
-                "https://login.microsoft.com", // TODO bogavril: what about other clouds?
-               tenant);
-
-            return provider;
-        }
+      
 
         private Account ConvertToMsalAccountOrNull(WebAccount webAccount)
         {
@@ -88,8 +78,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             return null;
         }
 
-        //TODO: bogavril - private?
-        public string GetHomeAccountIdOrNull(WebAccount webAccount)
+        private string GetHomeAccountIdOrNull(WebAccount webAccount)
         {
             if (!webAccount.Properties.TryGetValue("TenantId", out string tenantId))
             {
