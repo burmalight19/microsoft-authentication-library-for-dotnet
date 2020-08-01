@@ -10,14 +10,8 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
     internal interface IWamPlugin
     {
         Task<IEnumerable<IAccount>> GetAccountsAsync(string clientID);
-        
-        Task<WebAccount> FindWamAccountForMsalAccountAsync(
-            WebAccountProvider provider, 
-            IAccount account,   
-            string loginHint, // TODO: ATS always requires an account
-            string clientId);
 
-        WebTokenRequest CreateWebTokenRequest(
+        Task<WebTokenRequest> CreateWebTokenRequestAsync(
             WebAccountProvider provider, 
             bool isInteractive,
             bool isAccountInWam,
@@ -26,5 +20,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         MsalTokenResponse ParseSuccesfullWamResponse(WebTokenResponse webTokenResponse);
 
         string MapTokenRequestError(WebTokenRequestStatus status, uint errorCode, bool isInteractive);
+        string GetHomeAccountIdOrNull(WebAccount webAccount);
     }
 }
