@@ -19,12 +19,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
     internal class MsaPlugin : IWamPlugin
     {
         private readonly ICoreLogger _logger;
-        private readonly CoreUIParent _uiParent;
 
-        public MsaPlugin(ICoreLogger logger, CoreUIParent uiParent)
+        public MsaPlugin(ICoreLogger logger)
         {
             _logger = logger;
-            _uiParent = uiParent;
         }
 
         public async Task<WebTokenRequest> CreateWebTokenRequestAsync(

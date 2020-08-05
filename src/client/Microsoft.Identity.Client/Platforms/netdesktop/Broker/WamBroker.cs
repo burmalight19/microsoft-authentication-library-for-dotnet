@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Microsoft.Identity.Client.ApiConfig.Parameters;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Instance;
 using Microsoft.Identity.Client.Internal.Broker;
 using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
+using Microsoft.Identity.Client.Platforms.net45;
 using Microsoft.Identity.Client.UI;
 using Microsoft.Identity.Client.Utils;
 using Windows.Foundation.Metadata;
@@ -24,24 +28,180 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         private readonly IWamPlugin _msaPlugin;
 
 
-        private readonly CoreUIParent _uiParent;
         private readonly ICoreLogger _logger;
+        private readonly IntPtr _parentHandle;
+        private readonly SynchronizationContext _syncronizationContext;
 
 
         public WamBroker(CoreUIParent uiParent, ICoreLogger logger)
         {
 
-            _uiParent = uiParent;
             _logger = logger;
+            _parentHandle = GetParentWindow(uiParent);
+            _syncronizationContext = uiParent?.SynchronizationContext; 
 
-            _aadPlugin = new AadPlugin(_logger, _uiParent);
-            _msaPlugin = new MsaPlugin(_logger, _uiParent);
+            _aadPlugin = new AadPlugin(_logger);
+            _msaPlugin = new MsaPlugin(_logger);
 
         }
 
-        public Task<MsalTokenResponse> AcquireTokenInteractiveAsync(AuthenticationRequestParameters authenticationRequestParameters, AcquireTokenInteractiveParameters acquireTokenInteractiveParameters)
+        /// <summary>
+        /// In WAM, AcquireTokenInteractive is always associated to an account. WAM also allows for an "account picker" to be displayed, 
+        /// which is similar to the EVO browser experience, allowing the user to add an account or use an existing one.
+        /// 
+        /// MSAL does not have a concept of account picker so MSAL.AccquireTokenInteractive will: 
+        /// 
+        /// 1. Call WAM.AccountPicker if an IAccount (or possibly login_hint) is not configured
+        /// 2. Figure out the WAM.AccountID associated to the MSAL.Account
+        /// 3. Call WAM.AcquireTokenInteractive with the WAM.AccountID
+        /// 
+        /// To make matters more complicated, WAM has 2 plugins - AAD and MSA. With AAD plugin, 
+        /// it is possible to list all WAM accounts and find the one associated to the MSAL account. 
+        /// However, MSA plugin does NOT allow listing of accounts, and the only way to figure out the 
+        /// WAM account ID is to use the account picker. This makes AcquireTokenSilent impossible for MSA, 
+        /// because we would not be able to map an Msal.Account to a WAM.Account. To overcome this, 
+        /// we save the WAM.AccountID in MSAL's cache. 
+        /// </summary>
+        public async Task<MsalTokenResponse> AcquireTokenInteractiveAsync(
+            AuthenticationRequestParameters authenticationRequestParameters, 
+            AcquireTokenInteractiveParameters acquireTokenInteractiveParameters)
         {
-            throw new NotImplementedException();
+            // TODO: important - this is just copied from SILENT logic, need to figure out smth better
+            bool isMsa = IsMsaSilentRequest(authenticationRequestParameters.Authority);
+
+            IWamPlugin wamPlugin = isMsa ? _msaPlugin : _aadPlugin;
+            //string tid = isMsa ? "consumers" : authenticationRequestParameters.Authority.TenantId;
+            WebAccountProvider provider = await GetAccountProviderAsync(authenticationRequestParameters.AuthorityInfo.CanonicalAuthority)
+                .ConfigureAwait(false);
+
+            WebTokenRequestResult wamResult = null;
+
+            var wamAccount = await FindWamAccountForMsalAccountAsync(
+                provider,
+                wamPlugin,
+                authenticationRequestParameters.Account,
+                authenticationRequestParameters.LoginHint,
+                authenticationRequestParameters.ClientId).ConfigureAwait(false);
+
+            if (wamAccount != null)
+            {
+                wamResult = await AcquireInteractiveWithoutPickerAsync(
+                    authenticationRequestParameters, 
+                    wamPlugin, 
+                    provider, 
+                    wamAccount)
+                    .ConfigureAwait(false);
+
+            }
+            else
+            {
+                wamResult = await AcquireInteractiveWithPickerAsync(
+                    authenticationRequestParameters)
+                    .ConfigureAwait(false);
+
+            }
+
+            return CreateMsalTokenResponse(wamResult, wamPlugin, isInteractive: true);
+
+        }
+
+        private async Task<WebTokenRequestResult> AcquireInteractiveWithoutPickerAsync(
+            AuthenticationRequestParameters authenticationRequestParameters, 
+            IWamPlugin wamPlugin, 
+            WebAccountProvider provider,             
+            WebAccount wamAccount)
+        {
+            WebTokenRequest webTokenRequest = await wamPlugin.CreateWebTokenRequestAsync(
+                provider,
+                isInteractive: true,
+                isAccountInWam: true,
+                authenticationRequestParameters)
+           .ConfigureAwait(false);
+            AddExtraParamsToRequest(webTokenRequest, authenticationRequestParameters.ExtraQueryParameters);
+            AddPOPParamsToRequest(webTokenRequest);
+
+            try
+            {
+                var wamResult = await WebAuthenticationCoreManagerInterop.RequestTokenWithWebAccountForWindowAsync(
+                    _parentHandle, webTokenRequest, wamAccount);
+                return wamResult;
+
+            }
+            catch (Exception ex)
+            {
+                // TODO: needs some testing to understand the kind of exceptions thrown here and how to extract more details
+                _logger.ErrorPii(ex);
+                throw new MsalServiceException("wam_interactive_error", "See inner exception for details", ex);
+            }
+        }
+
+        private async Task<WebTokenRequestResult> AcquireInteractiveWithPickerAsync(
+            AuthenticationRequestParameters authenticationRequestParameters)
+        {
+            var accountPicker = new AccountPicker(_parentHandle, _logger, _syncronizationContext, authenticationRequestParameters.Authority);
+            WebTokenRequest webTokenRequest = null;
+
+
+            try
+            {
+                var accountProvider = await accountPicker.DetermineAccountInteractivelyAsync().ConfigureAwait(false);
+
+                IWamPlugin wamPlugin = accountProvider.Authority == "consumers" ? _msaPlugin : _aadPlugin; //TODO: needs testing
+
+                webTokenRequest = await wamPlugin.CreateWebTokenRequestAsync(
+                     accountProvider,
+                     isInteractive: true,
+                     isAccountInWam: false,
+                     authenticationRequestParameters).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // TODO: needs some testing to understand the kind of exceptions thrown here and how to extract more details
+                _logger.ErrorPii(ex);
+                throw new MsalServiceException("wam_interactive_picker_error", "Could not get the account provider. See inner exception for details", ex);
+            }
+
+            try
+            {
+                var wamResult = await WebAuthenticationCoreManagerInterop.RequestTokenForWindowAsync(
+                    _parentHandle, webTokenRequest);
+                return wamResult;
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorPii(ex);
+                throw new MsalServiceException("wam_interactive_picker_error", "Could not get the result. See inner exception for details", ex);
+            }
+
+        }
+
+        private IntPtr GetParentWindow(CoreUIParent uiParent)
+        {
+            if (uiParent == null || uiParent.OwnerWindow == null)
+            {
+                return WindowsNativeMethods.GetForegroundWindow();                
+            }
+
+            if (uiParent.OwnerWindow is IntPtr ptr)
+            {
+                _logger.Info("Owner window specified as IntPtr.");
+                return ptr;
+            }
+
+            if (uiParent.OwnerWindow is IWin32Window window) // this takes a dependency to WinForms, maybe not a good idea right now for .net core 
+            {
+                _logger.Info("Owner window specified as IWin32Window.");
+                return window.Handle;
+            }
+
+            throw new MsalClientException(
+                "wam_invalid_parent_window",
+                "Invalid parent window type, expecting IntPtr but got " + uiParent.GetType());
+        }
+
+        private void AddPOPParamsToRequest(WebTokenRequest webTokenRequest)
+        {
+            // TODO bogavril: add POP support by adding "token_type" = "pop" and "req_cnf" = req_cnf
         }
 
         // TODO: bogavril - in C++ impl, ROPC is also included here. Will ommit for now.
@@ -56,9 +216,18 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 bool isMsa = IsMsaSilentRequest(authenticationRequestParameters.Authority);
 
                 IWamPlugin wamPlugin = isMsa ? _msaPlugin : _aadPlugin;
-                string tid = isMsa ? "consumers" : authenticationRequestParameters.Authority.TenantId;
-                WebAccountProvider provider = await GetAccountProviderAsync(tid)
-                    .ConfigureAwait(false);
+                
+                WebAccountProvider provider;
+                if (isMsa)
+                {
+                    provider = await GetAccountProviderAsync("consumers").ConfigureAwait(false);
+                }
+                else
+                {
+                    provider = await GetAccountProviderAsync(authenticationRequestParameters.Authority.AuthorityInfo.CanonicalAuthority)
+                        .ConfigureAwait(false);
+                }
+                
 
                 // TODO: store WAM client IDs to support 3rd parties
                 WebAccount webAccount = await FindWamAccountForMsalAccountAsync(
@@ -85,7 +254,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                     .ConfigureAwait(false);
 
                 AddExtraParamsToRequest(webTokenRequest, authenticationRequestParameters.ExtraQueryParameters);
-                // TODO bogavril: add POP support by adding "token_type" = "pop" and "req_cnf" = req_cnf
+                AddPOPParamsToRequest(webTokenRequest);
 
                 WebTokenRequestResult wamResult;
                 using (_logger.LogBlockDuration("WAM:GetTokenSilentlyAsync:"))
@@ -108,6 +277,11 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
            string loginHint,
            string clientId)
         {
+            if (account == null && string.IsNullOrEmpty(loginHint))
+            {
+                return null;
+            }
+
             WamProxy wamProxy = new WamProxy(provider, _logger);
 
             var webAccounts = await wamProxy.FindAllWebAccountsAsync(clientId).ConfigureAwait(false);
@@ -116,7 +290,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             foreach (var webAccount in webAccounts)
             {
                 string homeAccountId = wamPlugin.GetHomeAccountIdOrNull(webAccount);
-                if (string.Equals(homeAccountId, account.HomeAccountId.Identifier, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(homeAccountId, account?.HomeAccountId?.Identifier, StringComparison.OrdinalIgnoreCase))
                 {
                     return webAccount;
                 }
@@ -288,17 +462,15 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             return effectiveScopeSet.AsSingleString();
         }
 
-        public static async Task<WebAccountProvider> GetAccountProviderAsync(string tenant)
+        public static async Task<WebAccountProvider> GetAccountProviderAsync(string authorityOrTenant)
         {
             WebAccountProvider provider = await WebAuthenticationCoreManager.FindAccountProviderAsync(
                 "https://login.microsoft.com", // TODO bogavril: what about other clouds?
-               tenant);
+               authorityOrTenant);
 
             return provider;
         }
 
         #endregion
     }
-
-
 }

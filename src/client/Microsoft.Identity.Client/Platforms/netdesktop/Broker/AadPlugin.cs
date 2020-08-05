@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client.ApiConfig.Parameters;
@@ -17,12 +18,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
     internal class AadPlugin : IWamPlugin
     {
         private readonly ICoreLogger _logger;
-        private readonly CoreUIParent _uiParent;
 
-        public AadPlugin(ICoreLogger logger, CoreUIParent uiParent)
+        public AadPlugin(ICoreLogger logger)
         {
             _logger = logger;
-            _uiParent = uiParent;
         }
 
         public Task<MsalTokenResponse> AcquireTokenInteractiveAsync(AuthenticationRequestParameters authenticationRequestParameters, AcquireTokenInteractiveParameters acquireTokenInteractiveParameters)
@@ -182,9 +181,14 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             _logger.InfoPii("Result from WAM scopes: " + scopes,
                 "Result from WAM has scopes? " + hasScopes);
 
+            foreach (var kvp in webTokenResponse.Properties)
+            {
+                Trace.WriteLine($"Other params {kvp.Key}: {kvp.Value}");
+            }
+
             MsalTokenResponse msalTokenResponse = new MsalTokenResponse()
             {
-                Authority = authority,
+                Authority = authority, // todo: Q this is "common" so not apropriate to save in cache? ... do we have TID?
                 AccessToken = webTokenResponse.Token,
                 IdToken = idToken,
                 CorrelationId = correlationId,
