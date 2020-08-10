@@ -54,12 +54,11 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 WebTokenRequestPromptType.Default;
 
             string scopes = WamBroker.GetEffectiveScopes(authenticationRequestParameters.Scope);
-            WebTokenRequest request = new WebTokenRequest(provider);
-            //WebTokenRequest request = new WebTokenRequest(
-            //    provider,
-            //    scopes,
-            //    authenticationRequestParameters.ClientId,
-            //    promptType);
+            WebTokenRequest request = new WebTokenRequest(
+                provider,
+                scopes,
+                authenticationRequestParameters.ClientId,
+                promptType);
 
             if (addNewAccount || setLoginHint)
             {
