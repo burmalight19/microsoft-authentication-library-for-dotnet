@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Instance;
+using Microsoft.Identity.Client.Internal.Requests;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
 using Windows.UI.ApplicationSettings;
@@ -18,6 +20,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         private volatile WebAccountProvider _provider;
 
+        public AuthenticationRequestParameters temporaryRequestParams { get; internal set; }
 
         public AccountPicker(IntPtr parentHandle, ICoreLogger logger, SynchronizationContext synchronizationContext, Authority authority)
         {
@@ -34,7 +37,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             {
                 try
                 {
-                    result = await ShowPickerAsync().ConfigureAwait(false);
+                    result = await ShowPickerAsync().ConfigureAwait(true);
                     ((TaskCompletionSource<object>)tcs).TrySetResult(null);
                 }
                 catch (Exception e)
@@ -51,7 +54,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 {
                     var tcs = new TaskCompletionSource<object>();
                     _synchronizationContext.Post(new SendOrPostCallback(sendAuthorizeRequestWithTcs), tcs);
-                    await tcs.Task.ConfigureAwait(false);
+                    await tcs.Task.ConfigureAwait(true);
                 }
                 else
                 {
@@ -70,6 +73,8 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 retaccountPane = AccountsSettingsPaneInterop.GetForWindow(_parentHandle);
                 retaccountPane.AccountCommandsRequested += Authenticator_AccountCommandsRequested;
                 await AccountsSettingsPaneInterop.ShowAddAccountForWindowAsync(_parentHandle);
+
+              
                 return _provider;
             }
             catch (Exception e)
@@ -146,18 +151,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         private void WebAccountProviderCommandInvoked(WebAccountProviderCommand command)
         {
-            //WebTokenRequest webTokenRequest = _webTokenRequest;
-            //try
-            //{
-
-            //    var comm = await WebAuthenticationCoreManagerInterop.RequestTokenForWindowAsync(
-            //        _parentHandle, webTokenRequest);
-            //}
-            //catch (Exception e)
-            //{
-            //    throw e;
-            //}
-
             _provider = command.WebAccountProvider;
         }
     }

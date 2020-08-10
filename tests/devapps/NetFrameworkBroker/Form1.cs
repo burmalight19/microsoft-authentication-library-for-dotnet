@@ -8,13 +8,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 using Microsoft.Identity.Client;
+using Windows.Storage.Streams;
 
 namespace NetDesktopWinForms
 {
     public partial class Form1 : Form
     {
-        private static string[] s_scopes = new string[] { "User.Read" };
+       
         public Form1()
         {
             InitializeComponent();
@@ -31,7 +33,7 @@ namespace NetDesktopWinForms
                 .WithAuthority(this.authorityCbx.Text)
                 .WithBroker(this.useBrokerChk.Checked)
                 .Build();
-
+            
             BindCache(pca.UserTokenCache, UserCacheFile);
             return pca;
         }
@@ -58,13 +60,16 @@ namespace NetDesktopWinForms
 
         private async void atsBtn_Click(object sender, EventArgs e)
         {
+
             try
             {
                 var pca = CreatePca();
                 var accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
-                var account = accounts.FirstOrDefault();
+                string loginHint = GetLoginHint();
+                IAccount account =
+                    string.IsNullOrEmpty(loginHint) ? accounts.FirstOrDefault() : accounts.First(aa => aa.Username == loginHint);
                 Log($"ATS for {account?.Username}");
-                AuthenticationResult result = await pca.AcquireTokenSilent(s_scopes, account)
+                AuthenticationResult result = await pca.AcquireTokenSilent(GetScopes(), account)
                     .ExecuteAsync()
                     .ConfigureAwait(false);
 
@@ -76,6 +81,17 @@ namespace NetDesktopWinForms
                 Log("Exception: " + ex);
             }
 
+        }
+
+        private string[] GetScopes()
+        {
+            string[] result = null;
+            cbxScopes.Invoke((MethodInvoker)delegate
+            {
+                result = cbxScopes.Text.Split(' ');
+            });
+
+            return result;
         }
 
         private void LogResult(AuthenticationResult ar)
@@ -100,7 +116,7 @@ namespace NetDesktopWinForms
         {
             resultTbx.Invoke((MethodInvoker)delegate
             {
-               resultTbx.Text += message + Environment.NewLine;
+               resultTbx.AppendText(message + Environment.NewLine);
            });
         }
 
@@ -110,7 +126,9 @@ namespace NetDesktopWinForms
             {
                 var pca = CreatePca();
 
-                AuthenticationResult result = await pca.AcquireTokenInteractive(s_scopes)
+                AuthenticationResult result = await pca.AcquireTokenInteractive(GetScopes())
+                    .WithPrompt(GetPrompt())
+                    .WithLoginHint(GetLoginHint())
                     .ExecuteAsync()
                     .ConfigureAwait(false);
 
@@ -120,6 +138,49 @@ namespace NetDesktopWinForms
             catch (Exception ex)
             {
                 Log("Exception: " + ex);
+            }
+        }
+
+        private string GetLoginHint()
+        {
+            string loginHint = null;
+            loginHintTxt.Invoke((MethodInvoker)delegate
+            {
+                loginHint = loginHintTxt.Text;
+            });
+
+            return loginHint;
+        }
+
+        private Prompt GetPrompt()
+        {
+            string prompt = null;
+            promptCbx.Invoke((MethodInvoker)delegate
+            {
+                prompt = promptCbx.Text;
+            });
+
+            if (string.IsNullOrEmpty(prompt))
+                return Prompt.SelectAccount;
+
+
+            switch (prompt)
+            {
+
+                case "select_account":
+                    return Prompt.SelectAccount;
+                case "force_login":
+                    return Prompt.ForceLogin;
+                case "no_prompt":
+                    return Prompt.NoPrompt;
+                case "consent":
+                    return Prompt.Consent;
+                case "never":
+                    return Prompt.Never;
+
+
+                default:
+                    throw new NotImplementedException();
             }
         }
 
@@ -137,12 +198,15 @@ namespace NetDesktopWinForms
         {
             var pca = CreatePca();
             var accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
-            var account = accounts.FirstOrDefault();
+
+            string loginHint = GetLoginHint();
+            IAccount account =
+                string.IsNullOrEmpty(loginHint) ? accounts.FirstOrDefault() : accounts.First(aa => aa.Username == loginHint);
 
             try
             {
                 Log($"ATS for {account?.Username}");
-                AuthenticationResult result = await pca.AcquireTokenSilent(s_scopes, account)
+                AuthenticationResult result = await pca.AcquireTokenSilent(GetScopes(), account)
                     .ExecuteAsync()
                     .ConfigureAwait(false);
 
@@ -154,8 +218,10 @@ namespace NetDesktopWinForms
                 Log("UI required Exception!");
                 try
                 {
-                    AuthenticationResult result2 = await pca.AcquireTokenInteractive(s_scopes)
+                    AuthenticationResult result2 = await pca.AcquireTokenInteractive(GetScopes())
                         .WithAccount(account)
+                        .WithPrompt(GetPrompt())
+                        .WithLoginHint(GetLoginHint())
                         .ExecuteAsync()
                         .ConfigureAwait(false);
                     LogResult(result2);
@@ -176,6 +242,15 @@ namespace NetDesktopWinForms
         private void clearBtn_Click(object sender, EventArgs e)
         {
             resultTbx.Text = "";
+        }
+
+        private async void btnClearCache_Click(object sender, EventArgs e)
+        {
+            var pca = CreatePca();
+            foreach (var acc in (await pca.GetAccountsAsync().ConfigureAwait(false)))
+            {
+                await pca.RemoveAsync(acc).ConfigureAwait(false);
+            }
         }
     }
 }

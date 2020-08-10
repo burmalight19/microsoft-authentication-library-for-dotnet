@@ -43,6 +43,9 @@
             this.useBrokerChk = new System.Windows.Forms.CheckBox();
             this.accBtn = new System.Windows.Forms.Button();
             this.clearBtn = new System.Windows.Forms.Button();
+            this.btnClearCache = new System.Windows.Forms.Button();
+            this.cbxScopes = new System.Windows.Forms.ComboBox();
+            this.label5 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // resultTbx
@@ -69,8 +72,10 @@
             this.authorityCbx.Items.AddRange(new object[] {
             "https://login.microsoftonline.com/common",
             "https://login.microsoftonline.com/organizations",
+            "https://login.microsoftonline.com/consumers",
             "https://login.microsoftonline.com/49f548d0-12b7-4169-a390-bb5304d24462",
-            "https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47"});
+            "https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47",
+            "https://login.windows-ppe.net/organizations"});
             this.authorityCbx.Location = new System.Drawing.Point(63, 13);
             this.authorityCbx.Name = "authorityCbx";
             this.authorityCbx.Size = new System.Drawing.Size(334, 21);
@@ -81,12 +86,13 @@
             // 
             this.clientIdCbx.FormattingEnabled = true;
             this.clientIdCbx.Items.AddRange(new object[] {
-            "c0186a6c-0bfc-4d83-9543-c2295b676f3b"});
+            "1d18b3b0-251b-4714-a02a-9956cec86c2d",
+            "872cd9fa-d31f-45e0-9eab-6e460a02d1f1"});
             this.clientIdCbx.Location = new System.Drawing.Point(63, 40);
             this.clientIdCbx.Name = "clientIdCbx";
-            this.clientIdCbx.Size = new System.Drawing.Size(334, 21);
+            this.clientIdCbx.Size = new System.Drawing.Size(283, 21);
             this.clientIdCbx.TabIndex = 4;
-            this.clientIdCbx.Text = "c0186a6c-0bfc-4d83-9543-c2295b676f3b";
+            this.clientIdCbx.Text = "1d18b3b0-251b-4714-a02a-9956cec86c2d";
             // 
             // label2
             // 
@@ -127,8 +133,10 @@
             this.promptCbx.FormattingEnabled = true;
             this.promptCbx.Items.AddRange(new object[] {
             "select_account",
-            "login",
-            "force"});
+            "force_login",
+            "no_prompt",
+            "consent",
+            "never"});
             this.promptCbx.Location = new System.Drawing.Point(224, 66);
             this.promptCbx.Name = "promptCbx";
             this.promptCbx.Size = new System.Drawing.Size(121, 21);
@@ -196,11 +204,45 @@
             this.clearBtn.UseVisualStyleBackColor = true;
             this.clearBtn.Click += new System.EventHandler(this.clearBtn_Click);
             // 
+            // btnClearCache
+            // 
+            this.btnClearCache.Location = new System.Drawing.Point(282, 147);
+            this.btnClearCache.Name = "btnClearCache";
+            this.btnClearCache.Size = new System.Drawing.Size(115, 23);
+            this.btnClearCache.TabIndex = 17;
+            this.btnClearCache.Text = "Clear MSAL Cache";
+            this.btnClearCache.UseVisualStyleBackColor = true;
+            this.btnClearCache.Click += new System.EventHandler(this.btnClearCache_Click);
+            // 
+            // cbxScopes
+            // 
+            this.cbxScopes.FormattingEnabled = true;
+            this.cbxScopes.Items.AddRange(new object[] {
+            "User.Read",
+            "User.Read User.Read.All"});
+            this.cbxScopes.Location = new System.Drawing.Point(401, 40);
+            this.cbxScopes.Name = "cbxScopes";
+            this.cbxScopes.Size = new System.Drawing.Size(226, 21);
+            this.cbxScopes.TabIndex = 18;
+            this.cbxScopes.Text = "User.Read";
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(352, 43);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(43, 13);
+            this.label5.TabIndex = 19;
+            this.label5.Text = "Scopes";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(639, 510);
+            this.Controls.Add(this.label5);
+            this.Controls.Add(this.cbxScopes);
+            this.Controls.Add(this.btnClearCache);
             this.Controls.Add(this.clearBtn);
             this.Controls.Add(this.accBtn);
             this.Controls.Add(this.useBrokerChk);
@@ -241,6 +283,9 @@
         private System.Windows.Forms.CheckBox useBrokerChk;
         private System.Windows.Forms.Button accBtn;
         private System.Windows.Forms.Button clearBtn;
+        private System.Windows.Forms.Button btnClearCache;
+        private System.Windows.Forms.ComboBox cbxScopes;
+        private System.Windows.Forms.Label label5;
     }
 }
 

@@ -119,24 +119,24 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
             if (setLoginHint)
             {
-                request.AppProperties.Add("LoginHint", authenticationRequestParameters.LoginHint);
+                request.Properties.Add("LoginHint", authenticationRequestParameters.LoginHint);
             }
 
             // TODO: bogavril - add support for ROPC ?
 
-            request.AppProperties.Add("wam_compat", "2.0");
+            request.Properties.Add("wam_compat", "2.0");
             if (ApiInformation.IsPropertyPresent("Windows.Security.Authentication.Web.Core.WebTokenRequest", "CorrelationId"))
             {
                 request.CorrelationId = authenticationRequestParameters.CorrelationId.ToString();
             }
             else
             {
-                request.AppProperties.Add("correlationId", authenticationRequestParameters.CorrelationId.ToString());
+                request.Properties.Add("correlationId", authenticationRequestParameters.CorrelationId.ToString());
             }
 
             if (!string.IsNullOrEmpty(authenticationRequestParameters.ClaimsAndClientCapabilities))
             {
-                request.AppProperties.Add("claims", authenticationRequestParameters.ClaimsAndClientCapabilities);
+                request.Properties.Add("claims", authenticationRequestParameters.ClaimsAndClientCapabilities);
             }
 
             return Task.FromResult(request);
@@ -188,7 +188,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
             MsalTokenResponse msalTokenResponse = new MsalTokenResponse()
             {
-                Authority = authority, // todo: Q this is "common" so not apropriate to save in cache? ... do we have TID?
                 AccessToken = webTokenResponse.Token,
                 IdToken = idToken,
                 CorrelationId = correlationId,
