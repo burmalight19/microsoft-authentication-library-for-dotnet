@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
+using System.Windows.Threading;
 using Microsoft.Identity.Client;
 using Windows.Storage.Streams;
 using Windows.UI.WebUI;
@@ -21,7 +22,8 @@ namespace NetDesktopWinForms
         public static List<ClientEntry> s_clients = new List<ClientEntry>()
         {
             new ClientEntry() { Id = "1d18b3b0-251b-4714-a02a-9956cec86c2d", Name = "1d18b3b0-251b-4714-a02a-9956cec86c2d (App in 49f)"},
-            new ClientEntry() { Id = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1", Name = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1 (VS)"}
+            new ClientEntry() { Id = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1", Name = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1 (VS)"},
+            new ClientEntry() { Id = "655015be-5021-4afc-a683-a4223eb5d0e5", Name = "655015be-5021-4afc-a683-a4223eb5d0e5"}
         };
 
         public Form1()
@@ -36,7 +38,7 @@ namespace NetDesktopWinForms
             clientIdCbx.ValueMember = "Id";
         }
 
-        public static readonly string UserCacheFile = 
+        public static readonly string UserCacheFile =
             System.Reflection.Assembly.GetExecutingAssembly().Location + ".msalcache.user.json";
 
 
@@ -48,7 +50,7 @@ namespace NetDesktopWinForms
                 .WithAuthority(this.authorityCbx.Text)
                 .WithBroker(this.useBrokerChk.Checked)
                 .Build();
-            
+
             BindCache(pca.UserTokenCache, UserCacheFile);
             return pca;
         }
@@ -79,14 +81,7 @@ namespace NetDesktopWinForms
             try
             {
                 var pca = CreatePca();
-                var accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
-                string loginHint = GetLoginHint();
-                IAccount account =
-                    string.IsNullOrEmpty(loginHint) ? accounts.FirstOrDefault() : accounts.First(aa => aa.Username == loginHint);
-                Log($"ATS for {account?.Username}");
-                AuthenticationResult result = await pca.AcquireTokenSilent(GetScopes(), account)
-                    .ExecuteAsync()
-                    .ConfigureAwait(false);
+                AuthenticationResult result = await RunAtsAsync(pca).ConfigureAwait(false);
 
                 LogResult(result);
 
@@ -96,6 +91,39 @@ namespace NetDesktopWinForms
                 Log("Exception: " + ex);
             }
 
+        }
+
+        private async Task<AuthenticationResult> RunAtsAsync(IPublicClientApplication pca)
+        {
+            var accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
+            string loginHint = GetLoginHint();
+            if (cbxUseAccount.Checked == true)
+            {
+                IAccount account =
+                    string.IsNullOrEmpty(loginHint) ?
+                        accounts.FirstOrDefault() :
+                        accounts.First(aa => aa.Username.StartsWith(loginHint));
+                Log($"ATS with IAccount for {account?.Username}");
+                return await pca.AcquireTokenSilent(GetScopes(), account)
+                    .ExecuteAsync()
+                    .ConfigureAwait(false);
+
+
+            }
+
+            if (string.IsNullOrEmpty(loginHint))
+            {
+                Log($"ATS with no account or login hint ... will fail with UiRequiredEx");
+
+                return await pca.AcquireTokenSilent(GetScopes(), (IAccount)null)
+                .ExecuteAsync()
+                .ConfigureAwait(false);
+            }
+
+            Log($"ATS with login hint: " + loginHint);
+            return await pca.AcquireTokenSilent(GetScopes(), loginHint)
+                    .ExecuteAsync()
+                    .ConfigureAwait(false);
         }
 
         private string[] GetScopes()
@@ -119,20 +147,20 @@ namespace NetDesktopWinForms
                 $"TenantId {ar.TenantId}" + Environment.NewLine +
                 $"Expires {ar.ExpiresOn.ToLocalTime()} local time" + Environment.NewLine +
                 $"Source {ar.AuthenticationResultMetadata.TokenSource}" + Environment.NewLine +
-                $"Scopes {String.Join(" ", ar.Scopes)}" + Environment.NewLine +                
+                $"Scopes {String.Join(" ", ar.Scopes)}" + Environment.NewLine +
                 $"AccessToken: {ar.AccessToken} " + Environment.NewLine +
                 $"IdToken {ar.IdToken}" + Environment.NewLine;
 
             Log(message);
-                
+
         }
 
         private void Log(string message)
         {
             resultTbx.Invoke((MethodInvoker)delegate
             {
-               resultTbx.AppendText(message + Environment.NewLine);
-           });
+                resultTbx.AppendText(message + Environment.NewLine);
+            });
         }
 
         private async void atiBtn_Click(object sender, EventArgs e)
@@ -140,12 +168,7 @@ namespace NetDesktopWinForms
             try
             {
                 var pca = CreatePca();
-
-                AuthenticationResult result = await pca.AcquireTokenInteractive(GetScopes())
-                    .WithPrompt(GetPrompt())
-                    .WithLoginHint(GetLoginHint())
-                    .ExecuteAsync()
-                    .ConfigureAwait(false);
+                AuthenticationResult result = await RunAtiAsync(pca).ConfigureAwait(false);
 
                 LogResult(result);
 
@@ -154,6 +177,35 @@ namespace NetDesktopWinForms
             {
                 Log("Exception: " + ex);
             }
+        }
+
+        private async Task<AuthenticationResult> RunAtiAsync(IPublicClientApplication pca)
+        {
+            AuthenticationResult result = null;
+
+            var builder = pca.AcquireTokenInteractive(GetScopes())
+                .WithPrompt(GetPrompt());
+            string loginHint = GetLoginHint();
+
+            if (!string.IsNullOrEmpty(loginHint))
+            {
+                if (cbxUseAccount.Checked == true)
+                {
+                    var accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
+                    var account = accounts.FirstOrDefault(aa => aa.Username.StartsWith(loginHint));
+                    Log($"ATI WithAccount for account {account?.Username ?? "null" }");
+                    builder = builder.WithAccount(account);
+                }
+                else
+                {
+                    builder = builder.WithLoginHint(loginHint);
+                }
+            }
+
+            result = await builder.ExecuteAsync().ConfigureAwait(false);
+
+
+            return result;
         }
 
         private string GetLoginHint()
@@ -212,37 +264,23 @@ namespace NetDesktopWinForms
         private async void atsAtiBtn_Click(object sender, EventArgs e)
         {
             var pca = CreatePca();
-            var accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
-
-            string loginHint = GetLoginHint();
-            IAccount account =
-                string.IsNullOrEmpty(loginHint) ? accounts.FirstOrDefault() : accounts.First(aa => aa.Username == loginHint);
 
             try
             {
-                Log($"ATS for {account?.Username}");
-                AuthenticationResult result = await pca.AcquireTokenSilent(GetScopes(), account)
-                    .ExecuteAsync()
-                    .ConfigureAwait(false);
+                var result = await RunAtsAsync(pca).ConfigureAwait(false);
 
                 LogResult(result);
 
             }
             catch (MsalUiRequiredException ex)
             {
-                Log("UI required Exception!");
+                Log("UI required Exception! " + ex.ErrorCode + " " + ex.Message);
                 try
                 {
-                    AuthenticationResult result2 = await pca.AcquireTokenInteractive(GetScopes())
-                        .WithAccount(account)
-                        .WithPrompt(GetPrompt())
-                        .WithLoginHint(GetLoginHint())
-                        .ExecuteAsync()
-                        .ConfigureAwait(false);
-                    LogResult(result2);
-
+                    var result = await RunAtiAsync(pca).ConfigureAwait(false);
+                    LogResult(result);
                 }
-                catch(Exception ex3)
+                catch (Exception ex3)
                 {
                     Log("Exception: " + ex3);
                 }
@@ -278,7 +316,7 @@ namespace NetDesktopWinForms
                 authorityCbx.SelectedItem = "https://login.windows-ppe.net/organizations";
             }
 
-            
+
         }
     }
 
