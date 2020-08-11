@@ -5,13 +5,14 @@ using System.Threading.Tasks;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Instance;
 using Microsoft.Identity.Client.Internal.Requests;
+using Microsoft.Identity.Client.Platforms.net45;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
 using Windows.UI.ApplicationSettings;
 
 namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 {
-    internal class AccountPicker 
+    internal class AccountPicker
     {
         private readonly IntPtr _parentHandle;
         private readonly ICoreLogger _logger;
@@ -20,7 +21,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         private volatile WebAccountProvider _provider;
 
-        public AuthenticationRequestParameters temporaryRequestParams { get; internal set; }
 
         public AccountPicker(IntPtr parentHandle, ICoreLogger logger, SynchronizationContext synchronizationContext, Authority authority)
         {
@@ -33,7 +33,13 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         public async Task<WebAccountProvider> DetermineAccountInteractivelyAsync()
         {
             WebAccountProvider result = null;
-            var sendAuthorizeRequestWithTcs = new Action<object>(async (tcs) =>
+
+            var showPicker = new Action(async () =>
+            {
+                result = await ShowPickerAsync().ConfigureAwait(true);
+            });
+
+            var showPickerTcs = new Action<object>(async (tcs) =>
             {
                 try
                 {
@@ -48,18 +54,49 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 }
             });
 
+            // TODO: need to check these cases, I don't think the account picker works for anything else except the UI thread
+
             if (Thread.CurrentThread.GetApartmentState() == ApartmentState.MTA)
             {
                 if (_synchronizationContext != null)
                 {
                     var tcs = new TaskCompletionSource<object>();
-                    _synchronizationContext.Post(new SendOrPostCallback(sendAuthorizeRequestWithTcs), tcs);
+                    _synchronizationContext.Post(new SendOrPostCallback(showPickerTcs), tcs);
                     await tcs.Task.ConfigureAwait(true);
                 }
                 else
                 {
-                    throw new InvalidOperationException(); // TODO: syncronization context null?
+                    using (var staTaskScheduler = new StaTaskScheduler(1))
+                    {
+                        try
+                        {
+                            Task.Factory.StartNew(
+                                showPicker,
+                                default,
+                                TaskCreationOptions.None,
+                                staTaskScheduler).Wait();
+                        }
+                        catch (AggregateException ae)
+                        {
+                            _logger.ErrorPii(ae.InnerException);
+                            // Any exception thrown as a result of running task will cause AggregateException to be thrown with
+                            // actual exception as inner.
+                            Exception innerException = ae.InnerExceptions[0];
+
+                            // In MTA case, AggregateException is two layer deep, so checking the InnerException for that.
+                            if (innerException is AggregateException)
+                            {
+                                innerException = ((AggregateException)innerException).InnerExceptions[0];
+                            }
+
+                            throw innerException;
+                        }                      
+                    }
                 }
+            }
+            else
+            {
+                showPicker();
             }
 
             return result;
@@ -74,7 +111,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 retaccountPane.AccountCommandsRequested += Authenticator_AccountCommandsRequested;
                 await AccountsSettingsPaneInterop.ShowAddAccountForWindowAsync(_parentHandle);
 
-              
+
                 return _provider;
             }
             catch (Exception e)
@@ -100,7 +137,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             {
                 deferral = e.GetDeferral();
 
-                if (string.Equals("common", _authority.TenantId))
+                if (string.Equals("common", _authority.TenantId) || WamBroker.MSA_PASSTHROUGH == true)
                 {
                     _logger.Verbose("Displaying selector for common");
                     e.WebAccountProviderCommands.Add(
