@@ -163,7 +163,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 _logger,
                 _syncronizationContext,
                 authenticationRequestParameters.Authority);
-            accountPicker.temporaryRequestParams = authenticationRequestParameters;
             WebTokenRequest webTokenRequest = null;
 
             IWamPlugin wamPlugin = null;

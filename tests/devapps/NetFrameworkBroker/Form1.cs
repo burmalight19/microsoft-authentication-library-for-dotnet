@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Windows.Forms.VisualStyles;
-using System.Windows.Threading;
 using Microsoft.Identity.Client;
-using Windows.Storage.Streams;
-using Windows.UI.WebUI;
 
 namespace NetDesktopWinForms
 {
@@ -181,6 +175,10 @@ namespace NetDesktopWinForms
 
         private async Task<AuthenticationResult> RunAtiAsync(IPublicClientApplication pca)
         {
+
+            // WAM LIMITATION - to be able to show the account picker, we need the ui thread
+            // currently we capture the UI thread from the thread calling AcquireTokenInteractive
+
             AuthenticationResult result = null;
 
             var builder = pca.AcquireTokenInteractive(GetScopes())
@@ -263,6 +261,8 @@ namespace NetDesktopWinForms
 
         private async void atsAtiBtn_Click(object sender, EventArgs e)
         {
+            var syncContext = SynchronizationContext.Current;
+
             var pca = CreatePca();
 
             try
@@ -274,6 +274,8 @@ namespace NetDesktopWinForms
             }
             catch (MsalUiRequiredException ex)
             {
+                await syncContext;
+
                 Log("UI required Exception! " + ex.ErrorCode + " " + ex.Message);
                 try
                 {
