@@ -7,7 +7,6 @@ using Microsoft.Identity.Client.ApiConfig.Parameters;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
-using Microsoft.Identity.Client.UI;
 using Microsoft.Identity.Client.Utils;
 using Windows.Foundation.Metadata;
 using Windows.Security.Authentication.Web.Core;
@@ -212,7 +211,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             if (status == WebTokenRequestStatus.ProviderError)
             {
                 if (errorCode == 0xcaa20005)
-                    return "ServerTemporarilyUnavailable"; //TODO bogavril: find existing error codes for these
+                    return "WAM_server_temporarily_unavailable"; //TODO bogavril: find existing error codes for these
 
                 unchecked // as per https://stackoverflow.com/questions/34198173/conversion-of-hresult-between-c-and-c-sharp
                 {
@@ -221,17 +220,17 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                          || hresultFacility == 0xAA7 // FACILITY_ADAL_URLMON in AAD WAM plugin
                          || hresultFacility == 0xAA8) // FACILITY_ADAL_INTERNET in AAD WAM plugin
                     {
-                        return "NoNetwork";
+                        return "WAM_no_network";
                     }
 
                     if (hresultFacility == 0xAA1) // FACILITY_ADAL_DEVELOPER in AAD WAM plugin
                     {
-                        return "ApiContractViolation";
+                        return "WAM_internal_error_ApiContractViolation";
                     }
                 }
             }
 
-            return "UnexpectedBrokerError";
+            return "WAM_unexpected_aad_error";
         }
 
     }

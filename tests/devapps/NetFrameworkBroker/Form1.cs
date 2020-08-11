@@ -11,15 +11,29 @@ using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using Microsoft.Identity.Client;
 using Windows.Storage.Streams;
+using Windows.UI.WebUI;
 
 namespace NetDesktopWinForms
 {
     public partial class Form1 : Form
     {
-       
+
+        public static List<ClientEntry> s_clients = new List<ClientEntry>()
+        {
+            new ClientEntry() { Id = "1d18b3b0-251b-4714-a02a-9956cec86c2d", Name = "1d18b3b0-251b-4714-a02a-9956cec86c2d (App in 49f)"},
+            new ClientEntry() { Id = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1", Name = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1 (VS)"}
+        };
+
         public Form1()
         {
             InitializeComponent();
+            var bindingSource1 = new BindingSource();
+            bindingSource1.DataSource = s_clients;
+
+            clientIdCbx.DataSource = bindingSource1.DataSource;
+
+            clientIdCbx.DisplayMember = "Name";
+            clientIdCbx.ValueMember = "Id";
         }
 
         public static readonly string UserCacheFile = 
@@ -28,8 +42,9 @@ namespace NetDesktopWinForms
 
         private IPublicClientApplication CreatePca()
         {
+            string clientId = (this.clientIdCbx.SelectedItem as ClientEntry).Id;
             var pca = PublicClientApplicationBuilder
-                .Create(this.clientIdCbx.Text)
+                .Create(clientId)
                 .WithAuthority(this.authorityCbx.Text)
                 .WithBroker(this.useBrokerChk.Checked)
                 .Build();
@@ -252,5 +267,24 @@ namespace NetDesktopWinForms
                 await pca.RemoveAsync(acc).ConfigureAwait(false);
             }
         }
+
+        private void clientIdCbx_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ClientEntry clientEntry = (ClientEntry)clientIdCbx.SelectedItem;
+
+            if (clientEntry.Id == "872cd9fa-d31f-45e0-9eab-6e460a02d1f1") // VS
+            {
+                cbxScopes.SelectedItem = "https://management.core.windows.net//.default";
+                authorityCbx.SelectedItem = "https://login.windows-ppe.net/organizations";
+            }
+
+            
+        }
+    }
+
+    public class ClientEntry
+    {
+        public string Name { get; set; }
+        public string Id { get; set; }
     }
 }
