@@ -18,16 +18,22 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         private readonly ICoreLogger _logger;
         private readonly SynchronizationContext _synchronizationContext;
         private readonly Authority _authority;
-
+        private readonly bool _isMsaPassthrough;
         private volatile WebAccountProvider _provider;
 
 
-        public AccountPicker(IntPtr parentHandle, ICoreLogger logger, SynchronizationContext synchronizationContext, Authority authority)
+        public AccountPicker(
+            IntPtr parentHandle, 
+            ICoreLogger logger, 
+            SynchronizationContext synchronizationContext, 
+            Authority authority, 
+            bool isMsaPassthrough)
         {
             _parentHandle = parentHandle;
             _logger = logger;
             _synchronizationContext = synchronizationContext;
             _authority = authority;
+            _isMsaPassthrough = isMsaPassthrough;
         }
 
         public async Task<WebAccountProvider> DetermineAccountInteractivelyAsync()
@@ -112,6 +118,14 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                       new WebAccountProviderCommand(
                           await WebAuthenticationCoreManager.FindAccountProviderAsync("https://login.microsoft.com", "consumers"),
                           WebAccountProviderCommandInvoked));
+
+                    if (_isMsaPassthrough)
+                    {
+                        e.WebAccountProviderCommands.Add(
+                           new WebAccountProviderCommand(
+                           await WebAuthenticationCoreManager.FindAccountProviderAsync("https://login.microsoft.com", "organizations"),
+                           WebAccountProviderCommandInvoked));
+                    }
                 }
                 else
                 {
