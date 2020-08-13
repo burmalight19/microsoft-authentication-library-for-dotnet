@@ -151,7 +151,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             //string aut = "https://login.windows-ppe.net/organizations";
             webTokenRequest.Properties.Add(
                             "authority",
-                            authenticationRequestParameters.AuthorityInfo.CanonicalAuthority);
+                            authenticationRequestParameters.UserConfiguredAuthority.AuthorityInfo.CanonicalAuthority);
             webTokenRequest.Properties.Add(
                 "validateAuthority",
                 authenticationRequestParameters.AuthorityInfo.ValidateAuthority ? "yes" : "no");

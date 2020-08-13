@@ -31,6 +31,7 @@ namespace Microsoft.Identity.Client.Internal.Requests
             _commonParameters = commonParameters;
 
             Authority = Authority.CreateAuthorityForRequest(serviceBundle.Config.AuthorityInfo, commonParameters.AuthorityOverride);
+            UserConfiguredAuthority = Authority;
 
             ClientId = serviceBundle.Config.ClientId;
             CacheSessionManager = new CacheSessionManager(tokenCache, this);
@@ -71,9 +72,16 @@ namespace Microsoft.Identity.Client.Internal.Requests
 
         /// <summary>
         /// Authority used by MSAL for most operations. After the /token call, the tenant ID is 
-        /// always known and TenantUpdatedCanonicalAuthority is also created
+        /// always known and TenantUpdatedCanonicalAuthority is created and used.
+        /// In Silent flows, the Authority cannot be unkwon ("common" or "organizations") and 
+        /// a tenanted authority will always be used (if the tenant cannot be determined, IAccount.HomeTenantId is used).
         /// </summary>
         public Authority Authority { get; set; }
+
+        /// <summary>
+        /// Original authority configured by the user
+        /// </summary>
+        public Authority UserConfiguredAuthority { get; set; }
         public AuthorityInfo AuthorityInfo => Authority.AuthorityInfo;
         public AuthorityEndpoints Endpoints { get; set; }
 
