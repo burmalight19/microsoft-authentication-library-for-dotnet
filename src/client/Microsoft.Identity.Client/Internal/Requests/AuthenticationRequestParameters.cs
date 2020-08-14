@@ -41,7 +41,8 @@ namespace Microsoft.Identity.Client.Internal.Requests
             IsBrokerConfigured = serviceBundle.Config.IsBrokerEnabled;
 
             // Set application wide query parameters.
-            ExtraQueryParameters = serviceBundle.Config.ExtraQueryParameters ?? new Dictionary<string, string>();
+            ExtraQueryParameters = serviceBundle.Config.ExtraQueryParameters ?? 
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             // Copy in call-specific query parameters.
             if (commonParameters.ExtraQueryParameters != null)

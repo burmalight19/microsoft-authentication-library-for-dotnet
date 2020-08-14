@@ -232,7 +232,7 @@ namespace NetDesktopWinForms
                 Log($"ATI WithLoginHint  {loginHint}");
                 builder = builder.WithLoginHint(loginHint);
             }
-            else if (cbxAccount.SelectedIndex != 0)
+            else if (cbxAccount.SelectedIndex > 0)
             {
                 var acc = (cbxAccount.SelectedItem as AccountModel).Account;
                 Log($"ATI WithAccount for account {acc?.Username ?? "null" }");
