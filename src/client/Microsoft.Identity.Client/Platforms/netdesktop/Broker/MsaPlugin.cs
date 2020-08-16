@@ -230,11 +230,11 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 {
                     correlationId = keyValuePair[1];
                 }
-                //else
-                //{
-                //    // TODO: C++ code saves the remaining properties, but I did not find a reason why                    
-                //    Debug.WriteLine($"{keyValuePair[0]}={keyValuePair[1]}");
-                //}
+                else
+                {
+                    // TODO: C++ code saves the remaining properties, but I did not find a reason why                    
+                    Debug.WriteLine($"{keyValuePair[0]}={keyValuePair[1]}");
+                }
             }
 
             if (string.IsNullOrEmpty(tokenType) || string.Equals("bearer", tokenType, System.StringComparison.InvariantCultureIgnoreCase))
@@ -261,6 +261,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 ExtendedExpiresIn = 0, // not supported on MSA
                 ClientInfo = clientInfo,
                 TokenType = tokenType,
+                WamAccountId = webTokenResponse.WebAccount.Id,
                 TokenSource = TokenSource.Broker
             };
 

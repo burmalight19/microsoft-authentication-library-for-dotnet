@@ -43,6 +43,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         private Account ConvertToMsalAccountOrNull(WebAccount webAccount)
         {
             string username = webAccount.UserName;
+            string wamId = webAccount.Id;
 
             if (!webAccount.Properties.TryGetValue("Authority", out string authority))
             {
@@ -54,7 +55,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             }
 
             string environment = (new Uri(authority)).Host;
-
 
             // TODO bogavril - this TODO was copied from C++ implementation and may not be relevant for MSAL .net
             // AAD WAM plugin returns both guest and home accounts as part of FindAllAccountAsync call.
@@ -174,10 +174,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             _logger.InfoPii("Result from WAM scopes: " + scopes,
                 "Result from WAM has scopes? " + hasScopes);
 
-            //foreach (var kvp in webTokenResponse.Properties)
-            //{
-            //    Trace.WriteLine($"Other params {kvp.Key}: {kvp.Value}");
-            //}
+            foreach (var kvp in webTokenResponse.Properties)
+            {
+                Trace.WriteLine($"Other params {kvp.Key}: {kvp.Value}");
+            }
 
             MsalTokenResponse msalTokenResponse = new MsalTokenResponse()
             {
@@ -189,6 +189,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 ExtendedExpiresIn = CoreHelpers.GetDurationFromWindowsTimestamp(extendedExpiresOn, _logger),
                 ClientInfo = clientInfo,
                 TokenType = "Bearer", // TODO: bogavril - token type?
+                WamAccountId = webTokenResponse.WebAccount.Id,
                 TokenSource = TokenSource.Broker
             };
 

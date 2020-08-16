@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace Microsoft.Identity.Client
@@ -30,6 +31,9 @@ namespace Microsoft.Identity.Client
         public string Environment { get; }
 
         public AccountId HomeAccountId { get; }
+
+        internal IDictionary<string, string> WamAccountIds { get; }
+
 
         public override string ToString()
         {

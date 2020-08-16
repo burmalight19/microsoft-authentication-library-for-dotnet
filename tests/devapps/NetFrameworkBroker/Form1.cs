@@ -270,7 +270,7 @@ namespace NetDesktopWinForms
             bool msa = false;
             cbxMsaPt.Invoke((MethodInvoker)delegate
             {
-                msa = cbxMsaPt.Enabled;
+                msa = cbxMsaPt.Checked;
             });
 
             return msa;

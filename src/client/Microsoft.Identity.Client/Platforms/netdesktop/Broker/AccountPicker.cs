@@ -148,6 +148,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         private void WebAccountProviderCommandInvoked(WebAccountProviderCommand command)
         {
             _provider = command.WebAccountProvider;
+
         }
     }
 }

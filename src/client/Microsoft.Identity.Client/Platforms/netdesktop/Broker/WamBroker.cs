@@ -171,7 +171,8 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             WebTokenRequestResult wamResult = null;
             try
             {
-                var accountProvider = await accountPicker.DetermineAccountInteractivelyAsync().ConfigureAwait(false);
+                WebAccountProvider accountProvider = await 
+                    accountPicker.DetermineAccountInteractivelyAsync().ConfigureAwait(false);
 
                 if (accountProvider == null)
                 {
@@ -180,7 +181,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
                 wamPlugin = (accountProvider.Authority == "consumers" && !isMsaPassthrough) ?
                     _msaPlugin : _aadPlugin; //TODO: Does not work with MSA PT :(
-
                 webTokenRequest = await wamPlugin.CreateWebTokenRequestAsync(
                      accountProvider,
                      isInteractive: true,
