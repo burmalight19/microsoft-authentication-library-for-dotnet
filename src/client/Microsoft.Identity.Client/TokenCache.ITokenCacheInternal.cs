@@ -671,7 +671,7 @@ namespace Microsoft.Identity.Client
                 }
             }
 
-            IEnumerable<IAccount> accounts = UpdateWithAdalAccounts(
+            UpdateMapWithAdalAccountsWithClientInfo(
                 environment,
                 instanceMetadata.Aliases,
                 adalUsersResult,
@@ -694,6 +694,11 @@ namespace Microsoft.Identity.Client
                     clientInfoToAccountMap[wamAccountCache.HomeAccountId] = wamAccount;
                 }
             }
+
+            IEnumerable<IAccount> accounts = UpdateWithAdalAccountsWithoutClientInfo(environment,
+                instanceMetadata.Aliases,
+                adalUsersResult,
+                clientInfoToAccountMap);
 
             if (!string.IsNullOrEmpty(requestParameters.HomeAccountId))
             {

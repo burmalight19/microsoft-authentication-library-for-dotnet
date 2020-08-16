@@ -50,5 +50,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             _logger.Info($"[WAM Proxy] FindAllWebAccountsAsync returning {findResult.Accounts.Count()} WAM accounts");
             return findResult.Accounts;
         }
+
+        public async Task<WebAccount> FindWebAccountByIdAsync(string accountId)
+        {
+            return await WebAuthenticationCoreManager.FindAccountAsync(_webAccountProvider, accountId);
+        }
     }
 }

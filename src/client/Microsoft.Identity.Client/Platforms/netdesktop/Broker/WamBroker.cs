@@ -250,7 +250,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 string.Equals("1", val);
         }
 
-        // TODO: bogavril - in C++ impl, ROPC is also included here. Will ommit for now.
         public async Task<MsalTokenResponse> AcquireTokenSilentAsync(
             AuthenticationRequestParameters authenticationRequestParameters,
             AcquireTokenSilentParameters acquireTokenSilentParameters)
@@ -327,6 +326,31 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
             WamProxy wamProxy = new WamProxy(provider, _logger);
 
+            IAccountInternal accountInternal = (account as IAccountInternal);
+            if (accountInternal?.WamAccountIds != null &&
+                accountInternal.WamAccountIds.TryGetValue(clientId, out string wamAccountId))
+            {
+                _logger.Info("WAM will try to find an account based on the wam account id from the cache");
+                WebAccount result = await wamProxy.FindWebAccountByIdAsync(wamAccountId).ConfigureAwait(false);
+
+                if (result != null)
+                {
+                    return result;
+                }
+
+                _logger.Warning("WAM account was not found for given wam account id.");
+            }
+
+            return await FindAccountByHomeAccIdOrLoginHintAsync(wamPlugin, account, loginHint, clientId, wamProxy).ConfigureAwait(false);
+        }
+
+        private static async Task<WebAccount> FindAccountByHomeAccIdOrLoginHintAsync(
+            IWamPlugin wamPlugin, 
+            IAccount account, 
+            string loginHint, 
+            string clientId, 
+            WamProxy wamProxy)
+        {
             var webAccounts = await wamProxy.FindAllWebAccountsAsync(clientId).ConfigureAwait(false);
 
             WebAccount matchedAccountByLoginHint = null;
@@ -338,7 +362,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                     return webAccount;
                 }
 
-                
+
                 if (string.Equals(loginHint, webAccount.UserName, StringComparison.OrdinalIgnoreCase))
                 {
                     matchedAccountByLoginHint = webAccount;
