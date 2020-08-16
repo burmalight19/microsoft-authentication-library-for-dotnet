@@ -217,8 +217,8 @@ namespace Microsoft.Identity.Client
             var existingAccount = _accessor.GetAllAccounts()
                 .SingleOrDefault(
                     acc => string.Equals(
-                        acc.GetKey().ToString(), 
-                        msalAccountCacheItem.GetKey().ToString(), 
+                        acc.GetKey().ToString(),
+                        msalAccountCacheItem.GetKey().ToString(),
                         StringComparison.OrdinalIgnoreCase));
             var existingWamAccountIds = existingAccount?.WamAccountIds;
             msalAccountCacheItem.WamAccountIds.MergeDifferentEntries(existingWamAccountIds);
@@ -676,6 +676,24 @@ namespace Microsoft.Identity.Client
                 instanceMetadata.Aliases,
                 adalUsersResult,
                 clientInfoToAccountMap);
+
+            // Add WAM accounts stored in MSAL's cache - for which we do not have an RT
+            // TODO: wam only code?
+            if (requestParameters.IsBrokerConfigured && ServiceBundle.PlatformProxy.BrokerSupportsWamAccounts)
+            {
+                foreach (MsalAccountCacheItem wamAccountCache in accountCacheItems.Where(
+                    acc => acc.WamAccountIds != null &&
+                    acc.WamAccountIds.ContainsKey(requestParameters.ClientId)))
+                {
+                    var wamAccount = new Account(
+                        wamAccountCache.HomeAccountId, 
+                        wamAccountCache.PreferredUsername, 
+                        environment, 
+                        wamAccountCache.WamAccountIds);
+
+                    clientInfoToAccountMap[wamAccountCache.HomeAccountId] = wamAccount;
+                }
+            }
 
             if (!string.IsNullOrEmpty(requestParameters.HomeAccountId))
             {

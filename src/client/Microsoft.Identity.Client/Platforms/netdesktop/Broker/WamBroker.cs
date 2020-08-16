@@ -43,7 +43,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
             _aadPlugin = new AadPlugin(_logger);
             _msaPlugin = new MsaPlugin(_logger);
-
         }
 
         /// <summary>
