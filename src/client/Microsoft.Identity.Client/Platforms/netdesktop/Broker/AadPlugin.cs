@@ -26,7 +26,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         public async Task<IEnumerable<IAccount>> GetAccountsAsync(string clientID)
         {
             var webAccounProvider = await WamBroker.GetAccountProviderAsync("organizations").ConfigureAwait(false);
-            WamProxy wamProxy = new WamProxy(webAccounProvider, _logger); //TODO: not suitable for unit testing
+            WamProxy wamProxy = new WamProxy(webAccounProvider, _logger); 
 
             var webAccounts = await wamProxy.FindAllWebAccountsAsync(clientID).ConfigureAwait(false);
 
@@ -55,10 +55,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             }
 
             string environment = (new Uri(authority)).Host;
-
-            // TODO bogavril - this TODO was copied from C++ implementation and may not be relevant for MSAL .net
-            // AAD WAM plugin returns both guest and home accounts as part of FindAllAccountAsync call.
-            // We will need to de-dupe WAM accounts before writing them to MSAL cache.
             string homeAccountId = GetHomeAccountIdOrNull(webAccount);
 
             if (homeAccountId != null)
@@ -114,8 +110,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             {
                 request.Properties.Add("LoginHint", authenticationRequestParameters.LoginHint);
             }
-
-            // TODO: bogavril - add support for ROPC ?
 
             request.Properties.Add("wam_compat", "2.0");
             if (ApiInformation.IsPropertyPresent("Windows.Security.Authentication.Web.Core.WebTokenRequest", "CorrelationId"))
@@ -188,7 +182,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 ExpiresIn = CoreHelpers.GetDurationFromWindowsTimestamp(expiresOn, _logger),
                 ExtendedExpiresIn = CoreHelpers.GetDurationFromWindowsTimestamp(extendedExpiresOn, _logger),
                 ClientInfo = clientInfo,
-                TokenType = "Bearer", // TODO: bogavril - token type?
+                TokenType = "Bearer", 
                 WamAccountId = webTokenResponse.WebAccount.Id,
                 TokenSource = TokenSource.Broker
             };
@@ -206,7 +200,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             if (status == WebTokenRequestStatus.ProviderError)
             {
                 if (errorCode == 0xcaa20005)
-                    return "WAM_server_temporarily_unavailable"; //TODO bogavril: find existing error codes for these
+                    return "WAM_server_temporarily_unavailable"; /
 
                 unchecked // as per https://stackoverflow.com/questions/34198173/conversion-of-hresult-between-c-and-c-sharp
                 {

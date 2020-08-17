@@ -20,7 +20,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             _webAccountProvider = webAccountProvider;
             _logger = logger;
         }
-
        
         public async Task<IEnumerable<WebAccount>> FindAllWebAccountsAsync(string clientID)
         {
@@ -36,11 +35,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
             FindAllAccountsResult findResult = await WebAuthenticationCoreManager.FindAllAccountsAsync(_webAccountProvider, clientID);
 
+            // This is expected to happen with the MSA provider, which does not allow account listing
             if (findResult.Status != FindAllWebAccountsStatus.Success)
             {
                 var error = findResult.ProviderError;
-
-                // TODO: bogavril - exceptions vs silent failures
                 _logger.Error($"[WAM Proxy] WebAuthenticationCoreManager.FindAllAccountsAsync failed " +
                     $" with error code {error.ErrorCode} error message {error.ErrorMessage} and status {findResult.Status}");
 

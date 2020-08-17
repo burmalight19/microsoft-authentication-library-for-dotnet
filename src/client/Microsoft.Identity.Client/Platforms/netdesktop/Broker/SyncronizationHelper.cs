@@ -6,7 +6,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 {
     /// <summary>
     /// Based on https://thomaslevesque.com/2015/11/11/explicitly-switch-to-the-ui-thread-in-an-async-method/
-    /// Makes the syncronization context awaitable
+    /// Makes the synchronization context await-able
     /// </summary>
     internal static class SynchronizationContextExtensions
     {
@@ -18,7 +18,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
     internal struct SynchronizationContextAwaiter : INotifyCompletion
     {
-        private static readonly SendOrPostCallback _postCallback = state => ((Action)state)();
+        private static readonly SendOrPostCallback s_postCallback = state => ((Action)state)();
 
         private readonly SynchronizationContext _context;
         public SynchronizationContextAwaiter(SynchronizationContext context)
@@ -28,7 +28,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         public bool IsCompleted => _context == SynchronizationContext.Current;
 
-        public void OnCompleted(Action continuation) => _context.Post(_postCallback, continuation);
+        public void OnCompleted(Action continuation) => _context.Post(s_postCallback, continuation);
 
         public void GetResult() { }
     }

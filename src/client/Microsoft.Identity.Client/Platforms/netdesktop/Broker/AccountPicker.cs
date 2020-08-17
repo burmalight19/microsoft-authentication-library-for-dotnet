@@ -45,7 +45,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 throw new MsalClientException("wam_ui_thread_only");
             }
 
-            // at this point we should be back on the ui thread
+            // go back to the ui thread
             await _synchronizationContext;
 
             result = await ShowPickerAsync().ConfigureAwait(true);

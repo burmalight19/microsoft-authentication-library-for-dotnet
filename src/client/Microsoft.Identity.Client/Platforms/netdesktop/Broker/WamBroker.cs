@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using Microsoft.Identity.Client.ApiConfig.Parameters;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Instance;
+using Microsoft.Identity.Client.Internal;
 using Microsoft.Identity.Client.Internal.Broker;
 using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
@@ -22,7 +23,6 @@ using Windows.System;
 
 namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 {
-    //TODO: bogavril - C++ impl catches all exceptions and emits telemetry - consider the same?
     internal class WamBroker : IBroker
     {
         private readonly IWamPlugin _aadPlugin;
@@ -240,14 +240,16 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         private void AddPOPParamsToRequest(WebTokenRequest webTokenRequest)
         {
-            // TODO bogavril: add POP support by adding "token_type" = "pop" and "req_cnf" = req_cnf
+            // TODO: add POP support by adding "token_type" = "pop" and "req_cnf" = req_cnf
         }
 
         private bool IsMsaPassthrough(AuthenticationRequestParameters authenticationRequestParameters)
         {
-            return 
-                authenticationRequestParameters.ExtraQueryParameters.TryGetValue("msal_msa_pt", out string val) &&
-                string.Equals("1", val);
+            // TODO: not currently working
+            //return 
+            //    authenticationRequestParameters.ExtraQueryParameters.TryGetValue("msal_msa_pt", out string val) &&
+            //    string.Equals("1", val);
+            return false;
         }
 
         public async Task<MsalTokenResponse> AcquireTokenSilentAsync(
@@ -311,7 +313,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             }
         }
 
-        // TODO: what about other clouds?
         private async Task<WebAccount> FindWamAccountForMsalAccountAsync(
            WebAccountProvider provider,
            IWamPlugin wamPlugin,
@@ -469,14 +470,14 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             string authorityTenant = authority.TenantId;
 
             // common 
-            if (string.Equals("common", authorityTenant, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Constants.CommonTenant, authorityTenant, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.Info($"[WAM Broker] Tenant is common.");
                 return IsHomeTidMSA(homeTenantId);
             }
 
             // org
-            if (string.Equals("organizations", authorityTenant, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Constants.OrganizationsTenant, authorityTenant, StringComparison.OrdinalIgnoreCase))
             {
                 if (msaPassthrough)
                 {
@@ -515,8 +516,8 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         private static bool IsConsumerTenantId(string tenantId)
         {
             return
-                string.Equals("consumenrs", tenantId, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals("9188040d-6c67-4c5b-b112-36a304b66dad", tenantId, StringComparison.OrdinalIgnoreCase);
+                string.Equals(Constants.ConsumerTenant, tenantId, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Constants.MsaTenantId, tenantId, StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task<IEnumerable<IAccount>> GetAccountsAsync(string clientID, string redirectUri)
@@ -563,7 +564,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         public static async Task<bool> IsDefaultAccountMsaAsync()
         {
             var provider = await GetDefaultAccountProviderAsync().ConfigureAwait(false);
-            return provider != null && string.Equals("consumers", provider.Authority);
+            return provider != null && string.Equals(Constants.ConsumerTenant, provider.Authority);
         }
 
         public static string GetEffectiveScopes(ISet<string> scopes) // TODO: consolidate with MSAL logic
@@ -575,7 +576,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         public static async Task<WebAccountProvider> GetAccountProviderAsync(string authorityOrTenant)
         {
             WebAccountProvider provider = await WebAuthenticationCoreManager.FindAccountProviderAsync(
-                "https://login.microsoft.com", // TODO bogavril: what about other clouds?
+                "https://login.microsoft.com", 
                authorityOrTenant);
 
             return provider;
