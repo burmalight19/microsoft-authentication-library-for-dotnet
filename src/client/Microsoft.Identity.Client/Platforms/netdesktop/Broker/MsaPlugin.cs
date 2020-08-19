@@ -10,6 +10,7 @@ using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Internal;
 using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
+using Microsoft.Identity.Client.Utils;
 using Windows.Foundation.Metadata;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
@@ -53,7 +54,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 WebTokenRequestPromptType.ForceAuthentication : 
                 WebTokenRequestPromptType.Default;
 
-            string scopes = WamBroker.GetEffectiveScopes(authenticationRequestParameters.Scope);
+            string scopes = ScopeHelper.GetMsalScopes(authenticationRequestParameters.Scope).AsSingleString();
             WebTokenRequest request = new WebTokenRequest(
                 provider,
                 scopes,
@@ -105,7 +106,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 return null;
             }
 
-            string homeAccountId = localAccountId + "." + Constants.MsaTenant;
+            string homeAccountId = localAccountId + "." + Constants.MsaTenantId;
             return homeAccountId;
         }
 

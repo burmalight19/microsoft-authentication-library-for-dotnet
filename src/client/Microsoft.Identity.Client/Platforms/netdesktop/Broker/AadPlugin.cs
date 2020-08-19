@@ -102,7 +102,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
             WebTokenRequest request = new WebTokenRequest(
                 provider,
-                WamBroker.GetEffectiveScopes(authenticationRequestParameters.Scope),
+                ScopeHelper.GetMsalScopes(authenticationRequestParameters.Scope).AsSingleString(),
                 authenticationRequestParameters.ClientId,
                 wamPrompt);
 
