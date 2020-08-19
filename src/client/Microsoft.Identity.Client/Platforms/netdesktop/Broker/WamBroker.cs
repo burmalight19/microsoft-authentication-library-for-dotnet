@@ -130,7 +130,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             }
             catch (Exception ex)
             {
-                // TODO: needs some testing to understand the kind of exceptions thrown here and how to extract more details
                 _logger.ErrorPii(ex);
                 throw new MsalServiceException("wam_interactive_error", "See inner exception for details", ex);
             }
@@ -179,7 +178,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 }
 
                 wamPlugin = (accountProvider.Authority == "consumers" && !isMsaPassthrough) ?
-                    _msaPlugin : _aadPlugin; //TODO: Does not work with MSA PT :(
+                    _msaPlugin : _aadPlugin; //TODO: Does not work with MSA PT ...
                 webTokenRequest = await wamPlugin.CreateWebTokenRequestAsync(
                      accountProvider,
                      isInteractive: true,
@@ -191,7 +190,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             }
             catch (Exception ex) when (!(ex is MsalException))
             {
-                // TODO: needs some testing to understand the kind of exceptions thrown here and how to extract more details
                 _logger.ErrorPii(ex);
                 throw new MsalServiceException(
                     "wam_interactive_picker_error",
@@ -565,12 +563,6 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         {
             var provider = await GetDefaultAccountProviderAsync().ConfigureAwait(false);
             return provider != null && string.Equals(Constants.ConsumerTenant, provider.Authority);
-        }
-
-        public static string GetEffectiveScopes(ISet<string> scopes) // TODO: consolidate with MSAL logic
-        {
-            var effectiveScopeSet = scopes.Union(OAuth2Value.ReservedScopes);
-            return effectiveScopeSet.AsSingleString();
         }
 
         public static async Task<WebAccountProvider> GetAccountProviderAsync(string authorityOrTenant)

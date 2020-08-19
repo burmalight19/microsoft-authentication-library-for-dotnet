@@ -137,7 +137,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                         WebAccountProviderCommandInvoked));
                 }
 
-                e.HeaderText = "Please select an account to log in with"; // TODO: this is English only, try removing it
+                //e.HeaderText = "Please select an account to log in with"; // TODO: this is English only, try removing it
             }
             finally
             {

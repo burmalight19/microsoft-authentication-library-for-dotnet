@@ -200,7 +200,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             if (status == WebTokenRequestStatus.ProviderError)
             {
                 if (errorCode == 0xcaa20005)
-                    return "WAM_server_temporarily_unavailable"; /
+                    return "WAM_server_temporarily_unavailable"; 
 
                 unchecked // as per https://stackoverflow.com/questions/34198173/conversion-of-hresult-between-c-and-c-sharp
                 {

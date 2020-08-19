@@ -133,7 +133,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         private IAccount ConvertToMsalAccountOrNull(WebAccount webAccount)
         {
-            const string environment = "login.windows.net"; //TODO: bogavril - other clouds?
+            const string environment = "login.windows.net"; //TODO: is MSA available in other clouds?
             string homeAccountId = GetHomeAccountIdOrNull(webAccount);
 
             return new Account(homeAccountId, webAccount.UserName, environment);
