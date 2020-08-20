@@ -22,6 +22,7 @@ using Windows.Security.Credentials;
 
 namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 {
+    //TODO: add redirect uri validation
     internal class WamBroker : IBroker
     {
         private readonly IWamPlugin _aadPlugin;

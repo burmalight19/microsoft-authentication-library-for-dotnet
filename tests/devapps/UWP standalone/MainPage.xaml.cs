@@ -19,6 +19,7 @@ using Windows.Storage.Streams;
 using System.Threading;
 using System.Collections.ObjectModel;
 using Windows.Security.Authentication.Web;
+using System.Diagnostics;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -29,82 +30,39 @@ namespace UWP_standalone
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private IPublicClientApplication _pca;
         private static readonly string s_clientID = "81179aff-797c-49c3-94bd-04ff14feec7d";
         private static readonly string s_authority = "https://login.microsoftonline.com/common/";
         private static readonly IEnumerable<string> s_scopes = new[] { "user.read" };
         private const string CacheFileName = "msal_user_cache.json";
 
-        private const string SSORedirectUri = "https://sso";
-        private readonly ObservableCollection<string> _redirectUris = new ObservableCollection<string>();
 
         public MainPage()
         {
             InitializeComponent();
-            Uri  s = WebAuthenticationBroker.GetCurrentApplicationCallbackUri();
-            _redirectUris.Add(SSORedirectUri);
-            _redirectUris.Add("https://MyDirectorySearcherApp");
+
+            // redirect URI required for WAM!
+            string sid = WebAuthenticationBroker.GetCurrentApplicationCallbackUri().Host;
+            string redirectUri = $"ms-appx-web://Microsoft.AAD.BrokerPlugin/{sid}";
         }
 
-        private void CreatePublicClient()
+
+
+        private IPublicClientApplication CreatePublicClient()
         {
-            _pca = PublicClientApplicationBuilder.Create(s_clientID)
+            return PublicClientApplicationBuilder.Create(s_clientID)
                 .WithAuthority(s_authority)
-                .WithRedirectUri(GetRedirectUri())
+                .WithBroker(chkUseBroker.IsChecked.Value)
+                .WithLogging((x, y, z) => Debug.WriteLine($"{x} {y}"), LogLevel.Verbose, true)
                 .Build();
-
-            // custom serialization - this is very similar to what MSAL is doing
-            // but extenders can implement their own cache.
-            _pca.UserTokenCache.SetAfterAccess((tokenCacheNotifcation) =>
-            {
-                if (tokenCacheNotifcation.HasStateChanged)
-                {
-                    StorageFile cacheFile = ApplicationData.Current.LocalFolder.CreateFileAsync(
-                        CacheFileName,
-                        CreationCollisionOption.ReplaceExisting).AsTask().GetAwaiter().GetResult();
-
-                    byte[] blob = tokenCacheNotifcation.TokenCache.SerializeMsalV3();
-                    IBuffer buffer = DpApiProxy.SampleProtectAsync(blob, "LOCAL=user").GetAwaiter().GetResult();
-
-                    FileIO.WriteBufferAsync(cacheFile, buffer).AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
-                }
-            });
-
-            _pca.UserTokenCache.SetBeforeAccess((tokenCacheNotifcation) =>
-            {
-                IStorageFile cacheFile = (ApplicationData.Current.LocalFolder.TryGetItemAsync(CacheFileName)
-                    .AsTask().ConfigureAwait(false).GetAwaiter().GetResult()) as IStorageFile;
-
-                if (cacheFile != null)
-                {
-                    IBuffer contents = FileIO.ReadBufferAsync(cacheFile).AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
-                    var result = DpApiProxy.SampleUnprotectDataAsync(contents).ConfigureAwait(false).GetAwaiter().GetResult();
-
-                    tokenCacheNotifcation.TokenCache.DeserializeMsalV3(result);
-                }
-            });
-        }
-
-        private string GetRedirectUri()
-        {
-            if (redirectUriCbx.SelectedValue == null)
-            {
-                return SSORedirectUri;
-            }
-
-            string selectedRedirectUri = redirectUriCbx.SelectedValue.ToString();
-           
-
-            return selectedRedirectUri;
         }
 
         private async void AcquireTokenIWA_ClickAsync(object sender, RoutedEventArgs e)
         {
-            CreatePublicClient();
+            var pca = CreatePublicClient();
             AuthenticationResult result = null;
             try
             {
-                result = await _pca.AcquireTokenByIntegratedWindowsAuth(s_scopes).ExecuteAsync(CancellationToken.None).ConfigureAwait(false);
+                result = await pca.AcquireTokenByIntegratedWindowsAuth(s_scopes).ExecuteAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -115,82 +73,34 @@ namespace UWP_standalone
             await DisplayResultAsync(result).ConfigureAwait(false);
         }
 
-        private async void ShowCacheCountAsync(object sender, RoutedEventArgs e)
-        {
-            IEnumerable<IAccount> accounts = await _pca.GetAccountsAsync().ConfigureAwait(false);
-            string message =
-                $"There are {accounts.Count()} in the MSAL token cache. " +
-                Environment.NewLine +
-                string.Join(", ", accounts.Select(a => a.Username));
-
-            await DisplayMessageAsync(message).ConfigureAwait(false);
-        }
 
         private async void ClearCacheAsync(object sender, RoutedEventArgs e)
         {
-            IEnumerable<IAccount> accounts = await _pca.GetAccountsAsync().ConfigureAwait(false);
+            var pca = CreatePublicClient();
+
+            IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
             foreach (IAccount account in accounts)
             {
-                await _pca.RemoveAsync(account).ConfigureAwait(false);
+                await pca.RemoveAsync(account).ConfigureAwait(false);
             }
         }
 
-        private async void ClearFirstAccountAsync(object sender, RoutedEventArgs e)
+
+        private async void ATS_ClickAsync(object sender, RoutedEventArgs e)
         {
-            IEnumerable<IAccount> accounts = await _pca.GetAccountsAsync().ConfigureAwait(false);
-            if (accounts.Any())
-            {
-                await _pca.RemoveAsync(accounts.First()).ConfigureAwait(false);
-            }
-        }
+            var pca = CreatePublicClient();
+            var upnPrefix = tbxUpn.Text;
 
-        private async void AccessTokenSilentButton_ClickAsync(object sender, RoutedEventArgs e)
-        {
-            if (_pca == null)
-            {
-                await DisplayMessageAsync("No PCA created yet. Call acquire token interactive first. ").ConfigureAwait(false);
-            }
-            else
-            {
-                IEnumerable<IAccount> accounts = await _pca.GetAccountsAsync().ConfigureAwait(false);
+            IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
+            var acc = accounts.SingleOrDefault(a => a.Username.StartsWith(upnPrefix));
 
-                AuthenticationResult result = null;
-                try
-                {
-                    result = await _pca
-                        .AcquireTokenSilent(s_scopes, accounts.FirstOrDefault())
-                        .ExecuteAsync(CancellationToken.None)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    await DisplayErrorAsync(ex).ConfigureAwait(false);
-                    return;
-                }
-
-                await DisplayResultAsync(result).ConfigureAwait(false);
-            }
-        }
-
-        private async void AccessTokenButton_ClickAsync(object sender, RoutedEventArgs e)
-        {
-            CreatePublicClient();
             AuthenticationResult result = null;
             try
             {
-                IEnumerable<IAccount> users = await _pca.GetAccountsAsync().ConfigureAwait(false);
-                IAccount user = users.FirstOrDefault();
-
-                result = await _pca.AcquireTokenInteractive(s_scopes)
+                result = await pca
+                    .AcquireTokenSilent(s_scopes, acc)
                     .ExecuteAsync(CancellationToken.None)
                     .ConfigureAwait(false);
-
-                await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
-                    () =>
-                    {
-                        AccessToken.Text = "\nAccessToken: \n" + result.AccessToken;
-                    });
-
             }
             catch (Exception ex)
             {
@@ -199,6 +109,34 @@ namespace UWP_standalone
             }
 
             await DisplayResultAsync(result).ConfigureAwait(false);
+
+        }
+
+        private async void ATI_ClickAsync(object sender, RoutedEventArgs e)
+        {
+            var pca = CreatePublicClient();
+            var upnPrefix = tbxUpn.Text;
+
+            IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
+            var acc = accounts.SingleOrDefault(a => a.Username.StartsWith(upnPrefix));
+
+            try
+            {
+                var result = await pca.AcquireTokenInteractive(s_scopes)
+                    .WithAccount(acc)
+                    .ExecuteAsync(CancellationToken.None)
+                    .ConfigureAwait(false);
+
+                await DisplayResultAsync(result).ConfigureAwait(false);
+
+
+            }
+            catch (Exception ex)
+            {
+                await DisplayErrorAsync(ex).ConfigureAwait(false);
+                return;
+            }
+
         }
 
         private async Task DisplayErrorAsync(Exception ex)
