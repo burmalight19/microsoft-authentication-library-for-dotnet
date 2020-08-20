@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,10 +9,9 @@ using Windows.Foundation.Metadata;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
 
-namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
+namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 {
     internal class WamProxy
-
     {
         private readonly WebAccountProvider _webAccountProvider;
         private readonly ICoreLogger _logger;
@@ -20,7 +21,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             _webAccountProvider = webAccountProvider;
             _logger = logger;
         }
-       
+
         public async Task<IEnumerable<WebAccount>> FindAllWebAccountsAsync(string clientID)
         {
             // Win 10 RS3 release and above

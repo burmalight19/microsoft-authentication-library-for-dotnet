@@ -1,11 +1,9 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
-using System.IdentityModel;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Internal;
 using Microsoft.Identity.Client.Internal.Requests;
@@ -15,7 +13,7 @@ using Windows.Foundation.Metadata;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
 
-namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
+namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 {
     internal class MsaPlugin : IWamPlugin
     {
@@ -50,8 +48,8 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 }
             }
 
-            var promptType = (setLoginHint || addNewAccount) ? 
-                WebTokenRequestPromptType.ForceAuthentication : 
+            var promptType = (setLoginHint || addNewAccount) ?
+                WebTokenRequestPromptType.ForceAuthentication :
                 WebTokenRequestPromptType.Default;
 
             string scopes = ScopeHelper.GetMsalScopes(authenticationRequestParameters.Scope).AsSingleString();
@@ -195,7 +193,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                         "Bad token response format, expected '=' separated pair");
                 }
 
-                if (keyValuePair[0] == "access_token") 
+                if (keyValuePair[0] == "access_token")
                 {
                     accessToken = keyValuePair[1];
                 }

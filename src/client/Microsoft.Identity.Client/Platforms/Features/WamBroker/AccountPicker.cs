@@ -1,16 +1,15 @@
-﻿using System;
-using System.Diagnostics;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Instance;
-using Microsoft.Identity.Client.Internal.Requests;
-using Microsoft.Identity.Client.Platforms.net45;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
 using Windows.UI.ApplicationSettings;
 
-namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
+namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 {
     internal class AccountPicker
     {
@@ -23,10 +22,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
 
         public AccountPicker(
-            IntPtr parentHandle, 
-            ICoreLogger logger, 
-            SynchronizationContext synchronizationContext, 
-            Authority authority, 
+            IntPtr parentHandle,
+            ICoreLogger logger,
+            SynchronizationContext synchronizationContext,
+            Authority authority,
             bool isMsaPassthrough)
         {
             _parentHandle = parentHandle;
@@ -88,7 +87,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             {
                 deferral = e.GetDeferral();
 
-                if (string.Equals("common", _authority.TenantId) || _isMsaPassthrough )
+                if (string.Equals("common", _authority.TenantId) || _isMsaPassthrough)
                 {
                     _logger.Verbose("Displaying selector for common");
                     e.WebAccountProviderCommands.Add(

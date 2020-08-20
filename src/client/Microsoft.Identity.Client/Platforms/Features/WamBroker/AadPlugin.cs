@@ -1,9 +1,10 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Identity.Client.ApiConfig.Parameters;
 using Microsoft.Identity.Client.Core;
 using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
@@ -12,7 +13,7 @@ using Windows.Foundation.Metadata;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
 
-namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
+namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 {
     internal class AadPlugin : IWamPlugin
     {
@@ -26,7 +27,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         public async Task<IEnumerable<IAccount>> GetAccountsAsync(string clientID)
         {
             var webAccounProvider = await WamBroker.GetAccountProviderAsync("organizations").ConfigureAwait(false);
-            WamProxy wamProxy = new WamProxy(webAccounProvider, _logger); 
+            WamProxy wamProxy = new WamProxy(webAccounProvider, _logger);
 
             var webAccounts = await wamProxy.FindAllWebAccountsAsync(clientID).ConfigureAwait(false);
 
@@ -38,7 +39,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             _logger.Info($"[WAM AAD Provider] GetAccountsAsync converted {webAccounts.Count()} MSAL accounts");
             return msalAccounts;
         }
-      
+
 
         private Account ConvertToMsalAccountOrNull(WebAccount webAccount)
         {
@@ -86,7 +87,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             }
 
             return oid + "." + tenantId;
-        }       
+        }
 
         public Task<WebTokenRequest> CreateWebTokenRequestAsync(
             WebAccountProvider provider,
@@ -182,7 +183,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 ExpiresIn = CoreHelpers.GetDurationFromWindowsTimestamp(expiresOn, _logger),
                 ExtendedExpiresIn = CoreHelpers.GetDurationFromWindowsTimestamp(extendedExpiresOn, _logger),
                 ClientInfo = clientInfo,
-                TokenType = "Bearer", 
+                TokenType = "Bearer",
                 WamAccountId = webTokenResponse.WebAccount.Id,
                 TokenSource = TokenSource.Broker
             };
@@ -200,7 +201,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             if (status == WebTokenRequestStatus.ProviderError)
             {
                 if (errorCode == 0xcaa20005)
-                    return "WAM_server_temporarily_unavailable"; 
+                    return "WAM_server_temporarily_unavailable";
 
                 unchecked // as per https://stackoverflow.com/questions/34198173/conversion-of-hresult-between-c-and-c-sharp
                 {

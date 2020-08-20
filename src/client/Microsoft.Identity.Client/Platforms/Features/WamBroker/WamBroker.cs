@@ -1,6 +1,7 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -15,13 +16,11 @@ using Microsoft.Identity.Client.Internal.Requests;
 using Microsoft.Identity.Client.OAuth2;
 using Microsoft.Identity.Client.Platforms.net45;
 using Microsoft.Identity.Client.UI;
-using Microsoft.Identity.Client.Utils;
 using Windows.Foundation.Metadata;
 using Windows.Security.Authentication.Web.Core;
 using Windows.Security.Credentials;
-using Windows.System;
 
-namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
+namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 {
     internal class WamBroker : IBroker
     {
@@ -169,7 +168,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
             WebTokenRequestResult wamResult = null;
             try
             {
-                WebAccountProvider accountProvider = await 
+                WebAccountProvider accountProvider = await
                     accountPicker.DetermineAccountInteractivelyAsync().ConfigureAwait(false);
 
                 if (accountProvider == null)
@@ -259,8 +258,8 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 // Important: MSAL will have already resolved the authority by now, 
                 // so we are not expecting "common" or "organizations" but a tenanted authority
                 bool isMsa = IsMsaRequest(
-                    authenticationRequestParameters.Authority, 
-                    null, 
+                    authenticationRequestParameters.Authority,
+                    null,
                     IsMsaPassthrough(authenticationRequestParameters));
 
                 IWamPlugin wamPlugin = isMsa ? _msaPlugin : _aadPlugin;
@@ -344,10 +343,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         }
 
         private static async Task<WebAccount> FindAccountByHomeAccIdOrLoginHintAsync(
-            IWamPlugin wamPlugin, 
-            IAccount account, 
-            string loginHint, 
-            string clientId, 
+            IWamPlugin wamPlugin,
+            IAccount account,
+            string loginHint,
+            string clientId,
             WamProxy wamProxy)
         {
             var webAccounts = await wamProxy.FindAllWebAccountsAsync(clientId).ConfigureAwait(false);
@@ -393,7 +392,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
                 case WebTokenRequestStatus.AccountSwitch:
                     _logger.Info("WAM response status account switch. Treating as success");
                     return wamPlugin.ParseSuccesfullWamResponse(wamResponse.ResponseData[0]);
-                    
+
                 case WebTokenRequestStatus.UserInteractionRequired:
                     errorCode =
                         wamPlugin.MapTokenRequestError(wamResponse.ResponseStatus, wamResponse.ResponseError.ErrorCode, isInteractive);
@@ -544,7 +543,10 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
 
         public bool IsBrokerInstalledAndInvokable()
         {
-            return true;
+            // Win 10 RS3 - WAM might work on lower version via AccountPicker and using account IDs
+            return ApiInformation.IsMethodPresent(
+                "Windows.Security.Authentication.Web.Core.WebAuthenticationCoreManager",
+                "FindAllAccountsAsync");
         }
 
         public Task RemoveAccountAsync(string clientID, IAccount account)
@@ -568,7 +570,7 @@ namespace Microsoft.Identity.Client.Platforms.netdesktop.Broker
         public static async Task<WebAccountProvider> GetAccountProviderAsync(string authorityOrTenant)
         {
             WebAccountProvider provider = await WebAuthenticationCoreManager.FindAccountProviderAsync(
-                "https://login.microsoft.com", 
+                "https://login.microsoft.com",
                authorityOrTenant);
 
             return provider;

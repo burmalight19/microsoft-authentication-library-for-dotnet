@@ -678,7 +678,6 @@ namespace Microsoft.Identity.Client
                 clientInfoToAccountMap);
 
             // Add WAM accounts stored in MSAL's cache - for which we do not have an RT
-            // TODO: wam only code?
             if (requestParameters.IsBrokerConfigured && ServiceBundle.PlatformProxy.BrokerSupportsWamAccounts)
             {
                 foreach (MsalAccountCacheItem wamAccountCache in accountCacheItems.Where(
