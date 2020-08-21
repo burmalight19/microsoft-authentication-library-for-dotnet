@@ -74,6 +74,16 @@ namespace UWP_standalone
         }
 
 
+        private async void GetAccountsAsync(object sender, RoutedEventArgs e)
+        {
+            var pca = CreatePublicClient();
+            IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
+            foreach (IAccount account in accounts)
+            {
+                await DisplayMessageAsync($"{account.Username} .... from {account.Environment}").ConfigureAwait(false);
+            }
+        }
+
         private async void ClearCacheAsync(object sender, RoutedEventArgs e)
         {
             var pca = CreatePublicClient();
@@ -117,7 +127,7 @@ namespace UWP_standalone
             var pca = CreatePublicClient();
             var upnPrefix = tbxUpn.Text;
 
-            IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
+            IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(true); // stay on UI thread
             var acc = accounts.SingleOrDefault(a => a.Username.StartsWith(upnPrefix));
 
             try
