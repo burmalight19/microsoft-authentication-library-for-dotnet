@@ -20,6 +20,8 @@ using System.Threading;
 using System.Collections.ObjectModel;
 using Windows.Security.Authentication.Web;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -30,7 +32,7 @@ namespace UWP_standalone
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private static readonly string s_clientID = "81179aff-797c-49c3-94bd-04ff14feec7d";
+        private static readonly string s_clientID = "1d18b3b0-251b-4714-a02a-9956cec86c2d";
         private static readonly string s_authority = "https://login.microsoftonline.com/common/";
         private static readonly IEnumerable<string> s_scopes = new[] { "user.read" };
         private const string CacheFileName = "msal_user_cache.json";
@@ -40,9 +42,14 @@ namespace UWP_standalone
         {
             InitializeComponent();
 
-            // redirect URI required for WAM!
+            // returns smth like s-1-15-2-2601115387-131721061-1180486061-1362788748-631273777-3164314714-2766189824
             string sid = WebAuthenticationBroker.GetCurrentApplicationCallbackUri().Host;
-            string redirectUri = $"ms-appx-web://Microsoft.AAD.BrokerPlugin/{sid}";
+
+            // use uppercase S
+            sid = sid.Replace('s', 'S');
+
+            // the redirect uri
+            string redirectUri = $"ms-appx-web://microsoft.aad.brokerplugin/{sid}";
         }
 
 
@@ -78,15 +85,54 @@ namespace UWP_standalone
         {
             var pca = CreatePublicClient();
             IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Getting accounts ...");
             foreach (IAccount account in accounts)
             {
-                await DisplayMessageAsync($"{account.Username} .... from {account.Environment}").ConfigureAwait(false);
+                sb.AppendLine($"{account.Username} .... from {account.Environment}");
             }
+
+            sb.AppendLine("Done getting accounts.");
+
+            await DisplayMessageAsync(sb.ToString()).ConfigureAwait(false);
+        }
+
+        private async void ExpireAtsAsync(object sender, RoutedEventArgs e)
+        {
+            var pca = CreatePublicClient();
+            var tokenCacheInternal = pca.UserTokenCache as ITokenCacheInternal;
+
+
+            TokenCacheNotificationArgs args =
+                 new TokenCacheNotificationArgs(
+                 pca.UserTokenCache as ITokenCacheInternal,
+                 s_clientID,
+                 null,
+                 true,
+                 false,
+                 true);
+
+            await tokenCacheInternal.OnBeforeAccessAsync(args).ConfigureAwait(false);
+
+            var ats = tokenCacheInternal.Accessor.GetAllAccessTokens();
+
+
+            // set access tokens as expired
+            foreach (var accessItem in ats)
+            {
+                accessItem.ExpiresOnUnixTimestamp =
+                    ((long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds)
+                    .ToString(CultureInfo.InvariantCulture);
+
+                tokenCacheInternal.Accessor.SaveAccessToken(accessItem);
+            }
+
+            await tokenCacheInternal.OnAfterAccessAsync(args).ConfigureAwait(false);
         }
 
         private async void ClearCacheAsync(object sender, RoutedEventArgs e)
-        {
-            var pca = CreatePublicClient();
+        {            
+            var pca = CreatePublicClient();            
 
             IEnumerable<IAccount> accounts = await pca.GetAccountsAsync().ConfigureAwait(false);
             foreach (IAccount account in accounts)
@@ -151,7 +197,7 @@ namespace UWP_standalone
 
         private async Task DisplayErrorAsync(Exception ex)
         {
-            await DisplayMessageAsync(ex.Message).ConfigureAwait(false);
+            await DisplayMessageAsync(ex.ToString()).ConfigureAwait(false);
         }
 
         private async Task DisplayResultAsync(AuthenticationResult result)
@@ -165,7 +211,7 @@ namespace UWP_standalone
             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
                    () =>
                    {
-                       AccessToken.Text = message;
+                       Log.Text = message;
                    });
         }
     }

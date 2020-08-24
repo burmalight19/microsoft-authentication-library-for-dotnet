@@ -12,14 +12,15 @@
         <Button Content="ATI" Margin="615,105,0,0" VerticalAlignment="Top" Click="ATI_ClickAsync"/>
         <Button Content="ATS" Margin="661,105,0,0" VerticalAlignment="Top" Click="ATS_ClickAsync"/>
 
-        <Button Content="Clear Cache" Margin="731,287,0,0" VerticalAlignment="Top" Click="ClearCacheAsync"/>
+        <Button Content="Clear Cache" Margin="619,324,0,0" VerticalAlignment="Top" Click="ClearCacheAsync" Width="99"/>
 
         <Button Content="WIA" Margin="711,105,0,0" VerticalAlignment="Top" Click="AcquireTokenIWA_ClickAsync"/>
-        <TextBlock HorizontalAlignment="Left" Margin="354,337,0,0" Height="556" Width="800" TextWrapping="Wrap" Text="" VerticalAlignment="Top" TextAlignment="Center" Name="AccessToken"/>
+        <TextBlock HorizontalAlignment="Left" Margin="354,381,0,0" Height="512" Width="800" TextWrapping="Wrap" Text="" VerticalAlignment="Top" TextAlignment="Center" Name="Log"/>
         <CheckBox Content="Use Broker (WAM)" Margin="615,250,0,0" VerticalAlignment="Top" IsChecked="True" x:Name="chkUseBroker"/>
         <Button Content="GetAccounts" Margin="619,287,0,0" VerticalAlignment="Top" Click="GetAccountsAsync"/>
 
         <TextBox x:Name="tbxUpn" Header="Account UPN prefix (leave empty for Account Picker)"  HorizontalAlignment="Left" Margin="615,157,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="205"/>
+        <Button Content="Expire ATs" Margin="734,324,0,0" VerticalAlignment="Top" Click="ExpireAtsAsync"/>
     </Grid>
 
 </Page>

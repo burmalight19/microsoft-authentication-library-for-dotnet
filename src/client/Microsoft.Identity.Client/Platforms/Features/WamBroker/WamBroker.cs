@@ -148,6 +148,9 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 
             try
             {
+                // UWP requies being on the UI thread
+                await _synchronizationContext;
+
                 var wamResult = await _wamProxy.RequestTokenForWindowAsync(_parentHandle, webTokenRequest, wamAccount).ConfigureAwait(false);
                 return wamResult;
 
@@ -210,7 +213,7 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                      accountProvider,
                      isInteractive: true,
                      isAccountInWam: false,
-                     authenticationRequestParameters).ConfigureAwait(false);
+                     authenticationRequestParameters).ConfigureAwait(true);
 
                 AddCommonParamsToRequest(authenticationRequestParameters, webTokenRequest);
 
