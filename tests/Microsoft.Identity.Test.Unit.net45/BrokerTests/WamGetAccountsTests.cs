@@ -152,7 +152,7 @@ namespace Microsoft.Identity.Test.Unit.BrokerTests
                 Assert.AreEqual(1, wamAccountIds.Count);
                 Assert.AreEqual("wam_acc_id", wamAccountIds[TestConstants.ClientId]);
             }
-        }
+        }   
 
         private static MsalTokenResponse CreateMsalTokenResponseFromWam(string wamAccountId)
         {
