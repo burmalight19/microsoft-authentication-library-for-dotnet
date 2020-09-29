@@ -160,6 +160,7 @@ namespace Microsoft.Identity.Test.Unit.RequestsTests
                 });
         }
 
+#if DESKTOP
         [TestMethod]
         public void BrokerInteractiveRequestTest()
         {
@@ -183,11 +184,8 @@ namespace Microsoft.Identity.Test.Unit.RequestsTests
                         null,
                         broker,
                         "install_url");
-                Assert.AreEqual(false, _brokerInteractiveRequest.Broker.IsBrokerInstalledAndInvokable());
 
-                AssertException.TaskThrowsAsync<PlatformNotSupportedException>(
-                    () => _brokerInteractiveRequest.Broker.AcquireTokenInteractiveAsync(
-                        parameters, new AcquireTokenInteractiveParameters())).ConfigureAwait(false);
+                Assert.AreEqual(true, _brokerInteractiveRequest.Broker.IsBrokerInstalledAndInvokable());
             }
         }
 
@@ -207,10 +205,11 @@ namespace Microsoft.Identity.Test.Unit.RequestsTests
                         _acquireTokenSilentParameters,
                         broker);
 
-                Assert.AreEqual(false, _brokerSilentAuthStrategy.Broker.IsBrokerInstalledAndInvokable());
-                AssertException.TaskThrowsAsync<PlatformNotSupportedException>(() => _brokerSilentAuthStrategy.Broker.AcquireTokenSilentAsync(_parameters, _acquireTokenSilentParameters)).ConfigureAwait(false);
+                Assert.AreEqual(true, _brokerSilentAuthStrategy.Broker.IsBrokerInstalledAndInvokable());
+                
             }
         }
+#endif
 
         [TestMethod]
         public void BrokerGetAccountsAsyncOnUnsupportedPlatformTest()
@@ -241,7 +240,7 @@ namespace Microsoft.Identity.Test.Unit.RequestsTests
         {
             // Arrange
             var mockBroker = Substitute.For<IBroker>();
-            var expectedAccount = Substitute.For<IAccount>();
+            var expectedAccount = new Account("a.b", "user", "login.windows.net");
             mockBroker.GetAccountsAsync(TestConstants.ClientId, TestConstants.RedirectUri).Returns(new[] { expectedAccount });
             mockBroker.IsBrokerInstalledAndInvokable().Returns(true);
 
@@ -267,7 +266,7 @@ namespace Microsoft.Identity.Test.Unit.RequestsTests
         {
             // Arrange
             var mockBroker = Substitute.For<IBroker>();
-            var expectedAccount = Substitute.For<IAccount>();
+            var expectedAccount = new Account("a.b", "user", "login.windows.net");
             mockBroker.GetAccountsAsync(TestConstants.ClientId, TestConstants.RedirectUri).Returns(new[] { expectedAccount });
             mockBroker.IsBrokerInstalledAndInvokable().Returns(false);
 

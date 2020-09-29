@@ -84,6 +84,7 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                     "AcquireTokenInteractive must be called from the UI thread");
             }
 
+            bool forceLoginPrompt = IsForceLoginPrompt(acquireTokenInteractiveParameters.Prompt);
 
             if (authenticationRequestParameters.Account != null ||
                 !string.IsNullOrEmpty(authenticationRequestParameters.LoginHint))
@@ -117,6 +118,7 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                 {
                     wamResult = await AcquireInteractiveWithoutPickerAsync(
                         authenticationRequestParameters,
+                        forceLoginPrompt,
                         wamPlugin,
                         provider,
                         wamAccount)
@@ -131,17 +133,36 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                 .ConfigureAwait(false);
         }
 
+        private static bool IsForceLoginPrompt(Prompt prompt)
+        {
+            if (prompt == Prompt.NotSpecified)
+            {
+                return false;
+            }
+
+            if (prompt == Prompt.ForceLogin || prompt == Prompt.SelectAccount)
+            {
+                return true;
+            }
+
+            throw new MsalClientException(
+                "wam_prompt_not_supported",
+                $"The broker does not support the prompt {prompt.PromptValue}. You can specify Prompt.ForceLogin or Prompt.SelectAccount to force authentication, or do not specify any value for the default broker behavior (recommended).");
+        }
+
         private async Task<WebTokenRequestResult> AcquireInteractiveWithoutPickerAsync(
             AuthenticationRequestParameters authenticationRequestParameters,
+            bool forceLoginPrompt,
             IWamPlugin wamPlugin,
             WebAccountProvider provider,
             WebAccount wamAccount)
         {
             WebTokenRequest webTokenRequest = await wamPlugin.CreateWebTokenRequestAsync(
                 provider,
+                authenticationRequestParameters,
+                isForceLoginPrompt: forceLoginPrompt,
                 isInteractive: true,
-                isAccountInWam: true,
-                authenticationRequestParameters)
+                isAccountInWam: true)
            .ConfigureAwait(false);
 
             AddCommonParamsToRequest(authenticationRequestParameters, webTokenRequest);
@@ -189,10 +210,9 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                 _synchronizationContext,
                 authenticationRequestParameters.Authority,
                 isMsaPassthrough);
-            WebTokenRequest webTokenRequest = null;
 
-            IWamPlugin wamPlugin = null;
-            WebTokenRequestResult wamResult = null;
+            IWamPlugin wamPlugin;
+            WebTokenRequest webTokenRequest;
             try
             {
                 WebAccountProvider accountProvider = await
@@ -204,16 +224,18 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                 }
 
                 wamPlugin = (accountProvider.Authority == "consumers" && !isMsaPassthrough) ?
-                    _msaPlugin : _aadPlugin; 
+                    _msaPlugin : _aadPlugin;
 
-                // UWP requies being on the UI thread
+                // UWP requires being on the UI thread
                 await _synchronizationContext;
 
                 webTokenRequest = await wamPlugin.CreateWebTokenRequestAsync(
                      accountProvider,
+                     authenticationRequestParameters,
+                     isForceLoginPrompt: true,
                      isInteractive: true,
-                     isAccountInWam: false,
-                     authenticationRequestParameters).ConfigureAwait(true);
+                     isAccountInWam: false)
+                    .ConfigureAwait(true);
 
                 AddCommonParamsToRequest(authenticationRequestParameters, webTokenRequest);
 
@@ -226,6 +248,7 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                     "Could not get the account provider. See inner exception for details", ex);
             }
 
+            WebTokenRequestResult wamResult;
             try
             {
                 wamResult = await _wamProxy.RequestTokenForWindowAsync(_parentHandle, webTokenRequest).ConfigureAwait(false);
@@ -330,9 +353,10 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 
                 WebTokenRequest webTokenRequest = await wamPlugin.CreateWebTokenRequestAsync(
                     provider,
-                    false /* is interactive */,
-                    webAccount != null, /* is account in WAM */
-                    authenticationRequestParameters)
+                    authenticationRequestParameters,
+                    isForceLoginPrompt: false,
+                    isAccountInWam: webAccount != null,
+                    isInteractive: false)
                     .ConfigureAwait(false);
 
                 AddCommonParamsToRequest(authenticationRequestParameters, webTokenRequest);

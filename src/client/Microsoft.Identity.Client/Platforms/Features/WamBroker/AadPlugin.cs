@@ -90,13 +90,13 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 
         public Task<WebTokenRequest> CreateWebTokenRequestAsync(
             WebAccountProvider provider,
+            AuthenticationRequestParameters authenticationRequestParameters,
+            bool isForceLoginPrompt,
             bool isInteractive,
-            bool isAccountInWam,
-            AuthenticationRequestParameters authenticationRequestParameters)
+            bool isAccountInWam)
         {
-
             bool setLoginHint = isInteractive && !isAccountInWam && !string.IsNullOrEmpty(authenticationRequestParameters.LoginHint);
-            var wamPrompt = setLoginHint ?
+            var wamPrompt = setLoginHint || (isInteractive && isForceLoginPrompt) ?
                 WebTokenRequestPromptType.ForceAuthentication :
                 WebTokenRequestPromptType.Default;
 

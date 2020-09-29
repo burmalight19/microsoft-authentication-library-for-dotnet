@@ -29,9 +29,10 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
 
         public async Task<WebTokenRequest> CreateWebTokenRequestAsync(
             WebAccountProvider provider,
+            AuthenticationRequestParameters authenticationRequestParameters,
+            bool isForceLoginPrompt,
             bool isInteractive,
-            bool isAccountInWam,
-            AuthenticationRequestParameters authenticationRequestParameters)
+            bool isAccountInWam)
         {
             bool setLoginHint = false;
             bool addNewAccount = false;
@@ -50,7 +51,7 @@ namespace Microsoft.Identity.Client.Platforms.Features.WamBroker
                 }
             }
 
-            var promptType = (setLoginHint || addNewAccount) ?
+            var promptType = (setLoginHint || addNewAccount || (isForceLoginPrompt && isInteractive)) ?
                 WebTokenRequestPromptType.ForceAuthentication :
                 WebTokenRequestPromptType.Default;
 

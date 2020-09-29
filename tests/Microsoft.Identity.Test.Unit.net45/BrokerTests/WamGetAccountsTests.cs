@@ -14,7 +14,7 @@ using NSubstitute;
 namespace Microsoft.Identity.Test.Unit.WamTests
 {
     [TestClass]
-    public class WamGetAccountsTests
+    public class WamGetAccountsTests : TestBase
     {
         [TestMethod]
         public async Task WAM_AccountIdWriteback_Async()
