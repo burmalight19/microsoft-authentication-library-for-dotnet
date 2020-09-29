@@ -1,4 +1,5 @@
 ﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,8 +12,9 @@ using Microsoft.Identity.Test.Common.Core.Mocks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NSubstitute;
 
-namespace Microsoft.Identity.Test.Unit.WamTests
+namespace Microsoft.Identity.Test.Unit.BrokerTests
 {
+#if DESKTOP
     [TestClass]
     public class WamGetAccountsTests : TestBase
     {
@@ -168,4 +170,5 @@ namespace Microsoft.Identity.Test.Unit.WamTests
             };
         }
     }
+#endif
 }

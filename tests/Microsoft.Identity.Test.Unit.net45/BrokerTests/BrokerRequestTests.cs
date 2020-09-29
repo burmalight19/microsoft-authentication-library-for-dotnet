@@ -26,7 +26,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http;
 
-namespace Microsoft.Identity.Test.Unit.RequestsTests
+namespace Microsoft.Identity.Test.Unit.BrokerTests
 {
     [TestClass]
     public class BrokerRequestTests : TestBase
